@@ -135,7 +135,7 @@ export const Layout = () => {
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-16 flex items-center px-4 border-b border-border">
           <Button
@@ -171,7 +171,7 @@ export const Layout = () => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4">
+        <main className="flex-1 overflow-hidden">
           <Outlet />
         </main>
       </div>
