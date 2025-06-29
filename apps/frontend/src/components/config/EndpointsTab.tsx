@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { useConfig } from '../../contexts/ConfigContext';
 import { Endpoint } from '../../types/config';
-import { PlusCircle, X, Edit, Save, Trash } from 'lucide-react';
+import { PlusCircle, Edit, Save, Trash } from 'lucide-react';
 
 const PLATFORMS = ['a', 'i', 'm', 'w'];
 

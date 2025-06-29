@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Menu, LayoutDashboard, Settings, BarChart, Upload } from 'lucide-react';
+import { Toaster } from '@/components/ui/toaster';
 
 export const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -175,6 +176,7 @@ export const Layout = () => {
           <Outlet />
         </main>
       </div>
+      <Toaster />
     </div>
   );
 };

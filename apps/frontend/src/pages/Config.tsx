@@ -1,10 +1,93 @@
-import React from "react";
+import { useState } from "react";
 import { motion } from 'framer-motion';
 import { ConfigProvider } from '../contexts/ConfigContext';
 import ConfigTabs from '../components/config/ConfigTabs';
 import { Button } from '../components/ui/button';
-import { RotateCcw, Play } from 'lucide-react';
+import { RotateCcw, Play, Loader2 } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { apiService } from '../services/api';
+
+function RunComparisonButton() {
+  // Use context hooks
+  const config = useConfig();
+  const configState = config as any; // Type casting until proper types are fixed
+  const auth = useAuth();
+  const user = auth as any; 
+  
+  // Toast hook for notifications
+  const { toast } = useToast();
+  
+  const navigate = useNavigate();
+  const [isRunning, setIsRunning] = useState(false);
+
+  // Function to validate and run comparison
+  const handleRunComparison = async () => {
+    console.log("Run button clicked - current config:", configState); // Debug log
+    
+    // SIMPLIFIED VALIDATION - Only checking for jobs
+    if (!configState.jobs || configState.jobs.length === 0) {
+      // Show error toast
+      toast({
+        title: "Job Configuration Missing",
+        description: "Please add at least one job before running a comparison.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Success toast to show validation passed
+    toast({
+      title: "Validation Passed",
+      description: "Starting comparison with " + configState.jobs.length + " jobs."
+    });
+    setIsRunning(true);
+    try {
+      const result = await apiService.runComparison(
+        configState,
+        user?.displayName || 'Anonymous User'
+      );
+      if (result.success && result.reportId) {
+        toast({
+          title: "Comparison Complete",
+          description: `Report generated successfully in ${result.duration}ms`
+        });
+        navigate(`/report/${result.reportId}`);
+      } else {
+        toast({
+          title: "Comparison Failed",
+          description: result.error || 'Unknown error occurred',
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Comparison Error",
+        description: error.message || 'Unknown error occurred',
+        variant: "destructive"
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <Button size="sm" onClick={handleRunComparison} disabled={isRunning} className="gap-2">
+      {isRunning ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" /> Running...
+        </>
+      ) : (
+        <>
+          <Play className="mr-2 h-4 w-4" /> Run Comparison
+        </>
+      )}
+    </Button>
+  );
+}
+
 
 function ConfigContent() {
   const { resetConfig, loadSampleConfig } = useConfig();
@@ -30,10 +113,7 @@ function ConfigContent() {
             <Button variant="outline" size="sm" onClick={loadSampleConfig}>
               Load Sample
             </Button>
-            <Button size="sm">
-              <Play className="mr-2 h-4 w-4" />
-              Run Comparison
-            </Button>
+            <RunComparisonButton />
           </div>
         </motion.div>
       </div>
