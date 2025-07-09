@@ -16,6 +16,9 @@ export interface ReportDiff {
 
 export interface ReportEndpoint {
   key: string;
+  // Additional properties to match backend structure
+  id?: string;
+  name?: string;
   endpoint: string;
   path: string;
   params: Record<string, string | number>;
@@ -29,9 +32,12 @@ export interface ReportEndpoint {
   timestampB: string; // ISO string
   cbLoc: string; // geo location code
   diffs: ReportDiff[];
+  diffCounts?: { total: number; [key: string]: number };
   error?: string;
   prodResponse?: any; // Production API response data
   stagingResponse?: any; // Staging API response data
+  responseA?: { success: boolean; error?: string; data?: any };
+  responseB?: { success: boolean; error?: string; data?: any };
 }
 
 export interface ReportMeta {
@@ -48,19 +54,26 @@ export interface ReportSummary {
 }
 
 export interface ReportJob {
+  jobId?: string;
   jobName: string;
-  timestamp: string; // ISO string 
-  testEngineer: string;
-  meta: ReportMeta;
-  summary: ReportSummary;
-  endpoints: ReportEndpoint[];
+  timestamp?: string; // ISO string 
+  testEngineer?: string;
+  platform?: string;
+  baseUrlA?: string;
+  baseUrlB?: string;
+  meta?: ReportMeta;
+  summary?: ReportSummary;
+  endpoints?: ReportEndpoint[];
+  records?: Array<any>; // For compatibility with backend structure
   headersUsed?: Record<string, string>;
 }
 
 export interface Report {
   id: string;
   timestamp: string;
+  testEngineer?: string; // Added to match backend API response
   jobs: ReportJob[];
+  meta?: Record<string, any>;
 }
 
 // API Response type (used for API responses)  

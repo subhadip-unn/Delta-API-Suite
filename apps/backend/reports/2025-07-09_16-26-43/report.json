@@ -1,0 +1,44 @@
+{
+  "testEngineer": "QA Engineer",
+  "timestamp": "2025-07-09 16:26:43",
+  "jobs": [
+    {
+      "jobName": "Prod v1 vs Stg v2",
+      "platform": "a",
+      "summary": {
+        "totalComparisons": 1,
+        "successful": 0,
+        "failures": 1,
+        "endpointsWithDiffs": 0
+      },
+      "endpoints": [
+        {
+          "id": "_VS_",
+          "name": "unknown vs unknown",
+          "diffs": [],
+          "diffCounts": {
+            "total": 0
+          },
+          "error": "Cannot read properties of undefined (reading 'endsWith')",
+          "platform": "a",
+          "params": {}
+        }
+      ],
+      "records": [
+        {
+          "jobName": "Prod v1 vs Stg v2",
+          "platform": "a",
+          "error": "Cannot read properties of undefined (reading 'endsWith')",
+          "errorStack": "TypeError: Cannot read properties of undefined (reading 'endsWith')\n    at buildUrl (/home/subhadip-das/Downloads/subhadipdas/Projects.i/ProjectM/cbz-api-delta-new/apps/backend/src/utils.js:9:32)\n    at /home/subhadip-das/Downloads/subhadipdas/Projects.i/ProjectM/cbz-api-delta-new/apps/backend/src/comparator.js:196:26\n    at /home/subhadip-das/Downloads/subhadipdas/Projects.i/ProjectM/cbz-api-delta-new/apps/backend/node_modules/p-limit/index.js:23:31\n    at run (/home/subhadip-das/Downloads/subhadipdas/Projects.i/ProjectM/cbz-api-delta-new/apps/backend/node_modules/p-limit/index.js:23:43)\n    at /home/subhadip-das/Downloads/subhadipdas/Projects.i/ProjectM/cbz-api-delta-new/apps/backend/node_modules/p-limit/index.js:45:20\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "endpointsRun": 1,
+    "idsUsed": 1,
+    "geoUsed": 0
+  },
+  "duration": 2,
+  "options": {}
+}

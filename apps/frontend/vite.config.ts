@@ -9,4 +9,17 @@ export default defineConfig({
       '@': '/src', // Simple alias that works without __dirname
     },
   },
+  // Development server configuration with API proxy
+  server: {
+    proxy: {
+      // Proxy all /api requests to the backend server
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        // Rewrite path if needed (uncomment if your backend doesn't expect /api prefix)
+        // rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  }
 })

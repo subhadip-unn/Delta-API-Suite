@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from 'framer-motion';
 import { ConfigProvider } from '../contexts/ConfigContext';
 import ConfigTabs from '../components/config/ConfigTabs';
@@ -11,9 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 
 function RunComparisonButton() {
-  // Use context hooks
-  const config = useConfig();
-  const configState = config as any; // Type casting until proper types are fixed
+  // Use context hooks directly from useConfig - no intermediate variables
+  const { config } = useConfig();
   const auth = useAuth();
   const user = auth as any; 
   
@@ -22,33 +21,63 @@ function RunComparisonButton() {
   
   const navigate = useNavigate();
   const [isRunning, setIsRunning] = useState(false);
+  
+  // Use ref to track if API call is in progress (prevents race conditions)
+  const isProcessingRef = useRef(false);
 
   // Function to validate and run comparison
   const handleRunComparison = async () => {
-    console.log("Run button clicked - current config:", configState); // Debug log
+    // Double protection against duplicate calls using both state and ref
+    if (isRunning || isProcessingRef.current) {
+      console.log("Already running a comparison - ignoring duplicate call");
+      return;
+    }
     
-    // SIMPLIFIED VALIDATION - Only checking for jobs
-    if (!configState.jobs || configState.jobs.length === 0) {
-      // Show error toast
+    // Set ref immediately to block any other calls
+    isProcessingRef.current = true;
+
+    // More detailed debug logging
+    console.log("=== DEBUG: Run Comparison Button Clicked ===");
+    
+    // Simple check for any configuration
+    const hasJobs = Array.isArray(config.jobs) && config.jobs.length > 0;
+    const hasEndpoints = Array.isArray(config.endpoints) && config.endpoints.length > 0;
+    
+    // If there's ANY content in the config, we'll try to run the comparison
+    const hasContent = config && (hasJobs || hasEndpoints);
+       
+    if (!hasContent) {
+      console.log("VALIDATION FAILED: No valid configuration found");
       toast({
-        title: "Job Configuration Missing",
-        description: "Please add at least one job before running a comparison.",
+        title: "Configuration Missing",
+        description: "Please configure your comparison or load a sample.",
         variant: "destructive"
       });
       return;
     }
     
-    // Success toast to show validation passed
-    toast({
-      title: "Validation Passed",
-      description: "Starting comparison with " + configState.jobs.length + " jobs."
-    });
+    // Set running state BEFORE the API call to prevent duplicate calls
     setIsRunning(true);
     try {
-      const result = await apiService.runComparison(
-        configState,
-        user?.displayName || 'Anonymous User'
-      );
+      // Make sure we have a user name and save it to localStorage for persistence
+      const qaName = user?.displayName || localStorage.getItem('userName') || 'QA Engineer';
+      localStorage.setItem('userName', qaName); // Always store the name for future use
+      console.log(`Starting comparison as QA: ${qaName}`);
+      
+      // Debug detailed config content
+      console.log('DEBUG: Config before API call', { 
+        configIsEmpty: !config,
+        jobCount: config?.jobs?.length || 0,
+        endpointCount: config?.endpoints?.length || 0,
+        jobsEmpty: Array.isArray(config?.jobs) && config.jobs.length === 0,
+        endpointsEmpty: Array.isArray(config?.endpoints) && config.endpoints.length === 0,
+        fullConfig: config // Log the entire config object
+      });
+
+      // Single API call with proper user name
+      const result = await apiService.runComparison(config, qaName);
+
+      // Handle success result
       if (result.success && result.reportId) {
         toast({
           title: "Comparison Complete",
@@ -69,7 +98,10 @@ function RunComparisonButton() {
         variant: "destructive"
       });
     } finally {
+      // Reset both state trackers
       setIsRunning(false);
+      isProcessingRef.current = false;
+      console.log('DEBUG: Comparison run complete, button re-enabled');
     }
   };
 

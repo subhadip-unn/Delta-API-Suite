@@ -29,6 +29,7 @@ const Report = () => {
           const response = await apiService.getReport(reportId);
           if (response.success && response.report) {
             setReport(response.report as Report);
+            console.log('Loaded report:', response.report);
           } else {
             setError(response.error || 'Failed to load report');
           }
@@ -56,9 +57,10 @@ const Report = () => {
     return selectedJob.endpoints.filter(endpoint => {
       // First apply search filter if provided
       const matchesSearch = searchQuery === '' || 
-        endpoint.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        endpoint.endpoint?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        endpoint.path?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        endpoint.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        endpoint.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        endpoint.urlA?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        endpoint.urlB?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         // Search through diff paths for the query
         endpoint.diffs?.some(diff => 
           diff.path?.join('.').toLowerCase().includes(searchQuery.toLowerCase())
@@ -69,11 +71,11 @@ const Report = () => {
       // Then apply status filter
       switch (activeFilter) {
         case 'errors':
-          return endpoint.diffs?.some(diff => diff.severity === 'Error');
+          return (endpoint.diffCounts?.total ?? 0) > 0 || endpoint.responseA?.error || endpoint.responseB?.error;
         case 'warnings':
-          return endpoint.diffs?.some(diff => diff.severity === 'Warning');
+          return endpoint.diffs?.some(diff => diff.kind === 'E' || diff.kind === 'D');
         case 'failures':
-          return !!endpoint.error;
+          return (endpoint.diffCounts?.total ?? 0) > 0;
         case 'all':
         default:
           return true;
@@ -111,7 +113,7 @@ const Report = () => {
   if (error) {
     return (
       <div className="container mx-auto p-6">
-        <Link to="/" className="inline-flex items-center mb-6 text-primary hover:underline">
+        <Link to="/config" className="inline-flex items-center mb-6 text-primary hover:underline">
           <ChevronLeft className="mr-2 h-4 w-4" />
           Back to Config
         </Link>
@@ -123,100 +125,118 @@ const Report = () => {
     );
   }
 
-  if (!report || !report.jobs || report.jobs.length === 0) {
+  // If no job data is available
+  if (!report?.jobs || report.jobs.length === 0) {
     return (
       <div className="container mx-auto p-6">
-        <Link to="/" className="inline-flex items-center mb-6 text-primary hover:underline">
+        <Link to="/config" className="inline-flex items-center mb-6 text-primary hover:underline">
           <ChevronLeft className="mr-2 h-4 w-4" />
           Back to Config
         </Link>
-        <div className="bg-yellow-50 p-4 rounded-md border border-yellow-300 text-yellow-700">
+        
+        <div className="bg-orange-50 p-4 rounded-md border border-orange-300 text-orange-800">
           <h2 className="text-lg font-semibold mb-2">Empty Report</h2>
-          <p>This report does not contain any comparison jobs.</p>
+          <p>This report does not contain any job data. This could be due to:</p>
+          <ul className="list-disc pl-5 mt-2">
+            <li>An error during the API comparison process</li>
+            <li>No endpoints were configured or available for comparison</li>
+            <li>The comparison was initiated but didn't complete successfully</li>
+          </ul>
+          
+          <div className="mt-4 p-2 bg-gray-100 rounded-md">
+            <h3 className="text-sm font-semibold">Debug Info:</h3>
+            <pre className="text-xs mt-1 whitespace-pre-wrap">
+              Report ID: {reportId}\n
+              Report Data: {JSON.stringify(report, null, 2).substring(0, 500)}...
+            </pre>
+          </div>
+          
+          <div className="mt-4">
+            <p className="font-medium">Possible solutions:</p>
+            <ul className="list-disc pl-5 mt-1">
+              <li>Check your API endpoints and make sure they are accessible</li>
+              <li>Verify your configuration includes valid jobs and endpoints</li>
+              <li>Try running a new comparison with a simpler configuration first</li>
+            </ul>
+          </div>
+          
+          <div className="mt-4 flex space-x-3">
+            <Link to="/config">
+              <Button size="sm" variant="secondary">
+                <ChevronLeft className="mr-1 h-4 w-4" /> Back to Config
+              </Button>
+            </Link>
+            <Button size="sm" onClick={handleDownload} variant="outline">
+              <Download className="mr-1 h-4 w-4" /> Download Report JSON
+            </Button>
+          </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleDownload}
-          className="mt-4 flex items-center gap-1"
-        >
-          <Download className="h-4 w-4" />
-          Download Raw JSON
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="report-container bg-gray-50 min-h-screen pb-10">
-      {/* Back navigation and download button */}
-      <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-20">
-        <Link to="/" className="inline-flex items-center text-primary hover:underline">
+    <div className="container mx-auto p-6">
+      <div className="mb-6 flex justify-between items-center">
+        <Link to="/config" className="inline-flex items-center text-primary hover:underline">
           <ChevronLeft className="mr-2 h-4 w-4" />
           Back to Config
         </Link>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleDownload}
-          className="flex items-center gap-1"
-        >
-          <Download className="h-4 w-4 mr-1" />
-          Download JSON
+        <Button size="sm" onClick={handleDownload} variant="outline" className="ml-auto">
+          <Download className="mr-2 h-4 w-4" /> Download JSON
         </Button>
       </div>
-
-      {/* Report content */}
-      {report && report.jobs && report.jobs.length > 0 && (
-        <div>
-          {/* Job tabs section */}
-          <JobTabs 
-            jobs={report.jobs} 
-            selectedJobIndex={selectedJobIndex} 
-            onSelectJob={setSelectedJobIndex} 
-          />
-          
-          {/* Report content container */}
-          <div className="container mx-auto px-4 py-6">
-            {/* Summary card */}
-            {selectedJob && (
-              <SummaryCard job={selectedJob} />
-            )}
-            
-            {/* Search and filter section */}
-            <SearchFilter 
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-            />
-            
-            {/* Endpoints section */}
-            <div className="endpoints-container">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">
-                  Endpoints 
-                  <span className="ml-2 text-sm font-normal text-gray-500">
-                    ({filteredEndpoints.length} of {selectedJob?.endpoints?.length || 0} showing)
-                  </span>
-                </h2>
-              </div>
-              
-              {filteredEndpoints.length > 0 ? (
-                filteredEndpoints.map((endpoint, index) => (
-                  <EndpointCard key={index} endpoint={endpoint} />
-                ))
-              ) : (
-                <div className="bg-white p-6 rounded text-center text-gray-500">
-                  No endpoints match the current filters.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      
+      {/* Job title - matches old UI more closely, but now theme-aware */}
+      <div className="bg-blue-50 dark:bg-blue-950 border-blue-100 dark:border-blue-900 border p-3 rounded-t-lg">
+        <h1 className="text-lg font-bold dark:text-white">{selectedJob?.jobName || 'Prod v1 vs Stg v2'}</h1>
+      </div>
+      
+      {selectedJob && (
+        <SummaryCard job={selectedJob} />
       )}
-      {/* Debug view - remove in production */}
-      {/* <pre className="bg-muted rounded p-4 overflow-x-auto text-xs max-h-[60vh]">{JSON.stringify(report, null, 2)}</pre> */}
+      
+      {report && report.jobs && report.jobs.length > 1 && (
+        <JobTabs 
+          jobs={report.jobs} 
+          selectedJobIndex={selectedJobIndex} 
+          onSelectJob={setSelectedJobIndex} 
+        />
+      )}
+      
+      <div className="mt-6">
+        <SearchFilter 
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+        />
+      </div>
+      
+      <div className="mt-4">
+        <h3 className="text-lg font-medium mb-2">Endpoints ({filteredEndpoints.length} of {selectedJob?.endpoints?.length || 0} showing)</h3>
+        
+        {filteredEndpoints.length === 0 ? (
+          <div className="p-4 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md text-center">
+            No endpoints match the current filters.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredEndpoints.map((endpoint, index) => (
+              <EndpointCard key={index} endpoint={endpoint} />
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Success toast that matches old UI - now dark mode compatible */}
+      <div className="fixed bottom-4 right-4 bg-white dark:bg-gray-800 shadow-md rounded-lg p-3 text-sm border border-gray-200 dark:border-gray-700 flex items-center">
+        <Loader2 className="h-4 w-4 text-green-500 mr-2 animate-spin" />
+        <div>
+          <p className="font-medium dark:text-white">Comparison Complete</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Report generated for {report?.testEngineer || "QA Engineer"}</p>
+        </div>
+      </div>
     </div>
   );
 };

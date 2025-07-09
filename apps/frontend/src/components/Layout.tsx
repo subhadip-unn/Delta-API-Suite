@@ -103,19 +103,33 @@ export const Layout = () => {
         {/* Sidebar Footer with Dark Mode Toggle */}
         <div className="absolute bottom-0 w-full p-4 border-t border-border">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Dark</span>
             <div className="flex items-center space-x-2">
-              <label className="inline-flex items-center space-x-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="dark:text-yellow-400 text-slate-400">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+              </svg>
+              <span className="text-sm font-medium dark:hidden">Light</span>
+              <span className="text-sm font-medium hidden dark:block">Dark</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <label className="inline-flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
                   className="sr-only"
                   onChange={() => document.documentElement.classList.toggle('dark')}
                   defaultChecked={document.documentElement.classList.contains('dark')}
                 />
-                <div className="relative w-10 h-5 bg-muted rounded-full">
-                  <div className="absolute inset-0 flex items-center justify-start px-0.5">
-                    <div className="w-4 h-4 bg-white rounded-full transition-transform duration-200 
-                      dark:translate-x-5"></div>
+                <div className="relative w-11 h-6 bg-muted rounded-full p-1 transition">
+                  <div className="absolute inset-0 flex items-center justify-start px-1">
+                    <div className="w-4 h-4 bg-white rounded-full transition-transform duration-200 transform 
+                      dark:translate-x-5 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-500 hidden dark:block">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                      </svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-slate-600 dark:hidden">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+                      </svg>
+                    </div>
                   </div>
                 </div>
               </label>

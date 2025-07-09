@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Config from './pages/Config';
 import Reports from './pages/Reports';
+import Report from './pages/Report';
 import Login from './pages/Login';
 import './global.css';
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/config" element={<Config />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/report/:reportId" element={<Report />} />
             <Route path="/upload" element={<div>Upload Report Page</div>} />
           </Route>
         </Route>

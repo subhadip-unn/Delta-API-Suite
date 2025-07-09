@@ -60,10 +60,26 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const loadSampleConfig = () => {
-    setConfig(sampleConfig);
-    saveToLocalStorage();
+    console.log('DEBUG: Loading sample config...', sampleConfig);
+    // Create a new object to ensure React detects the state change
+    const newConfig = { 
+      ...sampleConfig,
+      endpoints: [...sampleConfig.endpoints],
+      jobs: [...sampleConfig.jobs],
+      headers: [...sampleConfig.headers],
+      ids: [...sampleConfig.ids]
+    };
+    
+    // Force immediate update and save
+    setConfig(newConfig);
+    localStorage.setItem('cbzApiDeltaConfig', JSON.stringify(newConfig));
+    
     setSaveMessage('Sample configuration loaded');
     setTimeout(() => setSaveMessage(null), 2000);
+    
+    // Debug verification
+    console.log('DEBUG: Sample config loaded. Current state:', newConfig);
+    return newConfig; // Return for immediate use if needed
   };
 
   const saveToLocalStorage = () => {

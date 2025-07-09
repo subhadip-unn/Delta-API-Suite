@@ -1,0 +1,25 @@
+{
+  "testEngineer": "Anonymous User",
+  "timestamp": "2025-07-09 15:48:01",
+  "jobs": [
+    {
+      "jobName": "Prod v1 vs Stg v2",
+      "platform": "a",
+      "summary": {
+        "totalComparisons": 0,
+        "successful": 0,
+        "failures": 0,
+        "endpointsWithDiffs": 0
+      },
+      "endpoints": [],
+      "records": []
+    }
+  ],
+  "meta": {
+    "endpointsRun": 0,
+    "idsUsed": 1,
+    "geoUsed": 0
+  },
+  "duration": 0,
+  "options": {}
+}

@@ -7,12 +7,32 @@ interface SummaryCardProps {
 }
 
 const SummaryCard = ({ job }: SummaryCardProps) => {
+  // Debug what we received
+  console.log('SummaryCard received job:', job);
+  
+  // Handle missing data gracefully
+  if (!job) {
+    return <div className="p-4 bg-red-50 rounded-md border border-red-200 text-red-600">No job data available.</div>;
+  }
+  
+  if (!job.summary) {
+    // Create a basic summary based on job data
+    job.summary = {
+      totalComparisons: job.endpoints?.length || 0,
+      successful: job.endpoints?.filter(e => !e.error).length || 0,
+      failures: job.endpoints?.filter(e => e.error).length || 0,
+      endpointsWithDiffs: job.endpoints?.filter(e => e.diffs?.length > 0).length || 0
+    };
+  }
+
   const [headersExpanded, setHeadersExpanded] = useState(false);
   
-  const ts = new Date(job.timestamp).toLocaleString();
+  // Add null checks for optional fields
+  const ts = job.timestamp ? new Date(job.timestamp).toLocaleString() : 'No timestamp';
   const s = job.summary;
-  const meta = job.meta;
-  const qa = job.testEngineer;
+  const meta = job.meta || { endpointsRun: [], idsUsed: [], geoUsed: [] };
+  const qa = job.testEngineer || 'Unknown';
+  const jobName = job.jobName || 'Unknown Job';
 
   return (
     <div 
@@ -64,7 +84,7 @@ const SummaryCard = ({ job }: SummaryCardProps) => {
             fontSize: '22px'
           }}
         >
-          {job.jobName}
+          {jobName}
         </h2>
         <div>
           <span 
@@ -95,7 +115,7 @@ const SummaryCard = ({ job }: SummaryCardProps) => {
         </div>
       </div>
 
-      {/* Test metadata in a clean two-column layout */}
+      {/* Test metadata in a clean two-column layout, pixel-perfect to old report */}
       <div 
         className="flex flex-wrap"
         style={{
@@ -140,16 +160,31 @@ const SummaryCard = ({ job }: SummaryCardProps) => {
               <div className="font-medium">{qa}</div>
               
               <div className="text-gray-500">Generated On:</div>
-              <div className="font-medium">{ts}</div>
+              <div className="font-medium">{job.timestamp ? new Date(job.timestamp).toLocaleString() : ''}</div>
               
               <div className="text-gray-500">Endpoints Tested:</div>
-              <div className="font-medium">{meta.endpointsRun.join(", ")}</div>
+              <div className="font-medium">{meta.endpointsRun && meta.endpointsRun.length > 0 ? meta.endpointsRun.join(", ") : ''}</div>
               
               <div className="text-gray-500">IDs Used:</div>
-              <div className="font-medium">{meta.idsUsed.join(", ")}</div>
+              <div className="font-medium">{meta.idsUsed && meta.idsUsed.length > 0 ? meta.idsUsed.join(", ") : ''}</div>
               
               <div className="text-gray-500">Geo Locations:</div>
-              <div className="font-medium">{meta.geoUsed.join(", ")}</div>
+              <div className="font-medium">{meta.geoUsed && meta.geoUsed.length > 0 ? meta.geoUsed.join(", ") : ''}</div>
+            </div>
+            {/* Headers Used (collapsible, JSON block) */}
+            <div className="mt-3">
+              <button
+                className="text-xs text-blue-600 underline mb-1"
+                style={{cursor: 'pointer'}}
+                onClick={() => setHeadersExpanded(v => !v)}
+              >
+                {headersExpanded ? 'Hide Headers Used' : 'Show Headers Used'}
+              </button>
+              {headersExpanded && job.headersUsed && (
+                <pre className="bg-gray-100 text-xs rounded p-2 mt-1 overflow-x-auto" style={{maxHeight: '180px'}}>
+                  {JSON.stringify(job.headersUsed, null, 2)}
+                </pre>
+              )}
             </div>
           </div>
         </div>
@@ -276,45 +311,6 @@ const SummaryCard = ({ job }: SummaryCardProps) => {
               </div>
               <div 
                 className="bg-yellow-50 p-2 rounded text-center"
-                style={{
-                  background: '#fff8e6',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}
-              >
-                <div 
-                  className="text-2xl font-semibold text-yellow-600"
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: 600,
-                    color: '#f39c12'
-                  }}
-                >
-                  {s.endpointsWithDiffs}
-                </div>
-                <div 
-                  className="text-xs text-orange-700 mt-1"
-                  style={{
-                    fontSize: '12px',
-                    color: '#d35400',
-                    marginTop: '5px'
-                  }}
-                >
-                  With Diffs
-                </div>
-              </div>
-            </div>
-            
-            {/* Legend */}
-            <div 
-              className="legend flex text-xs gap-2"
-              style={{
-                marginTop: '10px',
-                display: 'flex',
-                fontSize: '13px',
-                gap: '10px'
-              }}
             >
               <div className="flex items-center">
                 <span 
@@ -457,6 +453,7 @@ const SummaryCard = ({ job }: SummaryCardProps) => {
         </div>
       )}
     </div>
+  </div>
   );
 };
 
