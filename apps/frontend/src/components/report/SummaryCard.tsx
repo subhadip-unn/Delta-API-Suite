@@ -7,453 +7,269 @@ interface SummaryCardProps {
 }
 
 const SummaryCard = ({ job }: SummaryCardProps) => {
-  // Debug what we received
-  console.log('SummaryCard received job:', job);
-  
+  const [showHeaders, setShowHeaders] = useState(false);
+
   // Handle missing data gracefully
   if (!job) {
-    return <div className="p-4 bg-red-50 rounded-md border border-red-200 text-red-600">No job data available.</div>;
-  }
-  
-  if (!job.summary) {
-    // Create a basic summary based on job data
-    job.summary = {
-      totalComparisons: job.endpoints?.length || 0,
-      successful: job.endpoints?.filter(e => !e.error).length || 0,
-      failures: job.endpoints?.filter(e => e.error).length || 0,
-      endpointsWithDiffs: job.endpoints?.filter(e => e.diffs?.length > 0).length || 0
-    };
+    return (
+      <div className="p-4 bg-red-50 rounded-md border border-red-200 text-red-600">
+        No job data available.
+      </div>
+    );
   }
 
-  const [headersExpanded, setHeadersExpanded] = useState(false);
+  // Extract data safely with fallbacks
+  const summary = job.summary || {};
+  const meta = job.meta || {};
   
-  // Add null checks for optional fields
-  const ts = job.timestamp ? new Date(job.timestamp).toLocaleString() : 'No timestamp';
-  const s = job.summary;
-  const meta = job.meta || { endpointsRun: [], idsUsed: [], geoUsed: [] };
-  const qa = job.testEngineer || 'Unknown';
-  const jobName = job.jobName || 'Unknown Job';
+  // Format time helper with exact format to match legacy report
+  const formatTime = (timeString: string | undefined) => {
+    if (!timeString) return 'Unknown Time';
+    try {
+      const date = new Date(timeString);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Extract key data with proper type safety matching old report structure
+  const totalEndpoints = job.endpoints?.length || 0;
+  const totalErrors = job.failures || 0;
+  const totalWarnings = summary.endpointsWithDiffs || 0;
+  const totalDiffs = job.diffsFound || summary.totalDiffs || 0;
+  const qaEngineer = job.testEngineer || 'Unknown';
+  const timestamp = formatTime(job.timestamp);
+  const jobTitle = job.jobName || 'API Comparison';
 
   return (
     <div 
-      className="summary-card bg-white rounded-lg p-4 mb-5 shadow-sm"
-      style={{ 
-        background: '#fff',
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 mb-6"
+      style={{
+        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
         borderRadius: '8px',
-        padding: '15px',
-        marginBottom: '20px',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.06)'
       }}
     >
       {/* Schema Notice */}
       <div 
-        className="schema-notice mb-4 flex items-center p-3 rounded"
-        style={{
-          background: '#fff9e6',
-          padding: '12px',
-          borderLeft: '4px solid #f1c40f',
-          borderRadius: '4px',
-          marginBottom: '1rem',
-          display: 'flex',
-          alignItems: 'center'
+        className="flex items-center p-3 rounded mb-4" 
+        style={{ 
+          background: '#fff9e6', 
+          padding: '12px', 
+          borderLeft: '4px solid #f1c40f', 
+          borderRadius: '4px', 
+          marginBottom: '16px' 
         }}
       >
         <AlertCircle className="mr-2 text-yellow-500" size={18} />
         <div>
-          <strong>Note:</strong> This report does <em>not</em> perform JSON‐schema validation. 
-          It only compares raw structures. To add schema‐based checks, integrate a JSON Schema validator.
-        </div>
-      </div>
-      
-      {/* Job Title with Environment Badges */}
-      <div 
-        className="flex items-center pb-4 mb-4 border-b border-gray-100"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '15px',
-          borderBottom: '1px solid #eee',
-          paddingBottom: '15px'
-        }}
-      >
-        <h2 
-          className="text-xl font-semibold m-0 flex-1"
-          style={{
-            margin: 0,
-            flex: 1,
-            fontSize: '22px'
-          }}
-        >
-          {jobName}
-        </h2>
-        <div>
-          <span 
-            className="bg-blue-500 text-white px-2 py-1 rounded text-xs mr-1"
-            style={{
-              background: '#3498db',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              marginRight: '5px',
-              fontSize: '12px'
-            }}
-          >
-            PROD
-          </span>
-          <span 
-            className="bg-green-500 text-white px-2 py-1 rounded text-xs"
-            style={{
-              background: '#2ecc71',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px'
-            }}
-          >
-            STAGING
-          </span>
+          <strong>Note:</strong> This report does <em>not</em> perform JSON‐schema validation. It only compares raw structures. To add schema‐based checks, integrate a JSON Schema validator.
         </div>
       </div>
 
-      {/* Test metadata in a clean two-column layout, pixel-perfect to old report */}
-      <div 
-        className="flex flex-wrap"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          marginBottom: '15px'
-        }}
-      >
-        {/* Left column - test details */}
-        <div 
-          className="flex-1 min-w-[300px] pr-4"
-          style={{
-            flex: '1',
-            minWidth: '300px',
-            paddingRight: '15px'
-          }}
-        >
-          <div className="mb-4">
-            <div 
-              className="text-base font-semibold text-gray-700 pb-1 mb-1 border-b border-dashed border-gray-100"
-              style={{
-                fontSize: '16px',
-                fontWeight: 600,
-                color: '#444',
-                marginBottom: '5px',
-                borderBottom: '1px dashed #eee',
-                paddingBottom: '3px'
-              }}
-            >
-              Test Information
-            </div>
-            <div 
-              className="grid grid-cols-[140px_1fr] gap-y-1 text-sm"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '140px 1fr',
-                rowGap: '5px',
-                fontSize: '14px'
-              }}
-            >
-              <div className="text-gray-500">Test Engineer:</div>
-              <div className="font-medium">{qa}</div>
-              
-              <div className="text-gray-500">Generated On:</div>
-              <div className="font-medium">{job.timestamp ? new Date(job.timestamp).toLocaleString() : ''}</div>
-              
-              <div className="text-gray-500">Endpoints Tested:</div>
-              <div className="font-medium">{meta.endpointsRun && meta.endpointsRun.length > 0 ? meta.endpointsRun.join(", ") : ''}</div>
-              
-              <div className="text-gray-500">IDs Used:</div>
-              <div className="font-medium">{meta.idsUsed && meta.idsUsed.length > 0 ? meta.idsUsed.join(", ") : ''}</div>
-              
-              <div className="text-gray-500">Geo Locations:</div>
-              <div className="font-medium">{meta.geoUsed && meta.geoUsed.length > 0 ? meta.geoUsed.join(", ") : ''}</div>
-            </div>
-            {/* Headers Used (collapsible, JSON block) */}
-            <div className="mt-3">
-              <button
-                className="text-xs text-blue-600 underline mb-1"
-                style={{cursor: 'pointer'}}
-                onClick={() => setHeadersExpanded(v => !v)}
+      {/* Job Title with Environment Badges */}
+      <div className="border-b dark:border-gray-700 pb-4 mb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+              {jobTitle}
+            </h2>
+            <div className="flex gap-2 mt-2">
+              <span 
+                className="px-3 py-1 rounded-full text-sm"
+                style={{
+                  backgroundColor: '#e6f3ff',
+                  color: '#0061c7',
+                  borderRadius: '12px',
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: 500
+                }}
               >
-                {headersExpanded ? 'Hide Headers Used' : 'Show Headers Used'}
-              </button>
-              {headersExpanded && job.headersUsed && (
-                <pre className="bg-gray-100 text-xs rounded p-2 mt-1 overflow-x-auto" style={{maxHeight: '180px'}}>
-                  {JSON.stringify(job.headersUsed, null, 2)}
-                </pre>
-              )}
+                <span className="text-sm text-gray-600">Production</span>
+              </span>
+              <span 
+                className="px-3 py-1 rounded-full text-sm"
+                style={{
+                  backgroundColor: '#e7f5ea',
+                  color: '#27ae60',
+                  borderRadius: '12px',
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: 500
+                }}
+              >
+                <span className="text-sm text-gray-600">Staging</span>
+              </span>
             </div>
           </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500 dark:text-gray-400" style={{ marginBottom: '6px' }}>
+              <strong className="font-medium">QA Engineer:</strong> {qaEngineer}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              <strong className="font-medium">Generated:</strong> {timestamp}
+            </p>
+          </div>
         </div>
-        
-        {/* Right column - test results */}
-        <div 
-          className="flex-1 min-w-[300px]"
-          style={{
-            flex: '1',
-            minWidth: '300px'
-          }}
-        >
-          <div>
+      </div>
+
+      {/* Two-column layout: Left = Test Info, Right = Results */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">Test Details</h3>
+          <div className="space-y-2">
+            <p className="text-sm">
+              <span className="font-medium text-gray-600 dark:text-gray-400">ID A:</span>{' '}
+              <span 
+                className="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded"
+                style={{
+                  backgroundColor: '#f5f5f5',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace',
+                  fontSize: '12px'
+                }}
+              >
+                {meta?.idsUsed?.[0] || 'N/A'}
+              </span>
+            </p>
+            <p className="text-sm">
+              <span className="font-medium text-gray-600 dark:text-gray-400">ID B:</span>{' '}
+              <span 
+                className="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded"
+                style={{
+                  backgroundColor: '#f5f5f5',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace',
+                  fontSize: '12px'
+                }}
+              >
+                {meta?.idsUsed?.[1] || 'N/A'}
+              </span>
+            </p>
+            <p className="text-sm">
+              <span className="font-medium text-gray-600 dark:text-gray-400">Geo:</span>{' '}
+              <span 
+                className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded text-xs font-medium"
+                style={{
+                  backgroundColor: '#3498db',
+                  color: 'white',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 500
+                }}
+              >
+                {meta?.geoUsed?.[0] || 'Unknown'}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">Test Results</h3>
+          <div className="grid grid-cols-2 gap-3">
             <div 
-              className="text-base font-semibold text-gray-700 pb-1 mb-1 border-b border-dashed border-gray-100"
+              className="bg-gray-50 dark:bg-gray-700 p-2 rounded"
               style={{
-                fontSize: '16px',
-                fontWeight: 600,
-                color: '#444',
-                marginBottom: '5px',
-                borderBottom: '1px dashed #eee',
-                paddingBottom: '3px'
+                backgroundColor: '#f8f9fa',
+                padding: '10px',
+                borderRadius: '6px'
               }}
             >
-              Test Results
+              <div className="text-xs text-gray-500 dark:text-gray-400">Endpoints Tested</div>
+              <div className="text-lg font-bold">{totalEndpoints}</div>
             </div>
             <div 
-              className="grid grid-cols-4 gap-2 mb-4"
+              className="bg-red-50 dark:bg-red-900/30 p-2 rounded"
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr 1fr',
-                gap: '10px',
-                marginBottom: '15px'
+                backgroundColor: '#fdedee',
+                padding: '10px',
+                borderRadius: '6px'
               }}
             >
-              <div 
-                className="bg-gray-50 p-2 rounded text-center"
-                style={{
-                  background: '#f8f9fa',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}
-              >
-                <div 
-                  className="text-2xl font-semibold"
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: 600
-                  }}
-                >
-                  {s.totalComparisons}
-                </div>
-                <div 
-                  className="text-xs text-gray-500 mt-1"
-                  style={{
-                    fontSize: '12px',
-                    color: '#666',
-                    marginTop: '5px'
-                  }}
-                >
-                  Total Tests
-                </div>
-              </div>
-              <div 
-                className="bg-green-50 p-2 rounded text-center"
-                style={{
-                  background: '#e7f5ea',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}
-              >
-                <div 
-                  className="text-2xl font-semibold text-green-600"
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: 600,
-                    color: '#27ae60'
-                  }}
-                >
-                  {s.successful}
-                </div>
-                <div 
-                  className="text-xs text-green-500 mt-1"
-                  style={{
-                    fontSize: '12px',
-                    color: '#2ecc71',
-                    marginTop: '5px'
-                  }}
-                >
-                  Successful
-                </div>
-              </div>
-              <div 
-                className="bg-red-50 p-2 rounded text-center"
-                style={{
-                  background: '#fdedee',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  textAlign: 'center'
-                }}
-              >
-                <div 
-                  className="text-2xl font-semibold text-red-600"
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: 600,
-                    color: '#e74c3c'
-                  }}
-                >
-                  {s.failures}
-                </div>
-                <div 
-                  className="text-xs text-red-700 mt-1"
-                  style={{
-                    fontSize: '12px',
-                    color: '#c0392b',
-                    marginTop: '5px'
-                  }}
-                >
-                  Failures
-                </div>
-              </div>
-              <div 
-                className="bg-yellow-50 p-2 rounded text-center"
+              <div className="text-xs text-red-600 dark:text-red-400" style={{ color: '#e74c3c' }}>Errors</div>
+              <div className="text-lg font-bold text-red-600 dark:text-red-400" style={{ color: '#e74c3c' }}>{totalErrors}</div>
+            </div>
+            <div 
+              className="bg-yellow-50 dark:bg-yellow-900/30 p-2 rounded"
+              style={{
+                backgroundColor: '#fff8e6',
+                padding: '10px',
+                borderRadius: '6px'
+              }}
             >
-              <div className="flex items-center">
-                <span 
-                  className="w-4 h-4 inline-flex items-center justify-center bg-green-50 rounded mr-1 text-green-600 text-xs"
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#e7f5ea',
-                    borderRadius: '3px',
-                    color: '#27ae60',
-                    fontSize: '11px',
-                    marginRight: '3px'
-                  }}
-                >
-                  ✅
-                </span>
-                <span>OK</span>
-              </div>
-              <div className="flex items-center">
-                <span 
-                  className="w-4 h-4 inline-flex items-center justify-center bg-yellow-50 rounded mr-1 text-yellow-600 text-xs"
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#fff8e6',
-                    borderRadius: '3px',
-                    color: '#f39c12',
-                    fontSize: '11px',
-                    marginRight: '3px'
-                  }}
-                >
-                  ⚠️
-                </span>
-                <span>Warning</span>
-              </div>
-              <div className="flex items-center">
-                <span 
-                  className="w-4 h-4 inline-flex items-center justify-center bg-red-50 rounded mr-1 text-red-600 text-xs"
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#fdedee',
-                    borderRadius: '3px',
-                    color: '#e74c3c',
-                    fontSize: '11px',
-                    marginRight: '3px'
-                  }}
-                >
-                  ❌
-                </span>
-                <span>Error</span>
-              </div>
+              <div className="text-xs text-yellow-600 dark:text-yellow-400" style={{ color: '#f39c12' }}>Warnings</div>
+              <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400" style={{ color: '#f39c12' }}>{totalWarnings}</div>
+            </div>
+            <div 
+              className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded"
+              style={{
+                backgroundColor: '#e8f4fd',
+                padding: '10px',
+                borderRadius: '6px'
+              }}
+            >
+              <div className="text-xs text-blue-600 dark:text-blue-400" style={{ color: '#3498db' }}>Total Differences</div>
+              <div className="text-lg font-bold text-blue-600 dark:text-blue-400" style={{ color: '#3498db' }}>{totalDiffs}</div>
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Headers Section */}
-      {job.headersUsed ? (
-        <div 
-          className="headers-section mt-4 pt-4 border-t border-gray-100"
+      <div>
+        <button
+          onClick={() => setShowHeaders(!showHeaders)}
+          className="flex items-center w-full justify-between text-left text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 py-2"
           style={{
-            marginTop: '15px',
-            borderTop: '1px solid #eee',
-            paddingTop: '15px'
+            backgroundColor: '#f5f5f5',
+            padding: '8px 12px',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            border: '1px solid #e0e0e0',
+            transition: 'background-color 0.2s'
           }}
         >
+          <span>Headers Used</span>
+          {showHeaders ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        
+        {showHeaders && (
           <div 
-            className="flex justify-between items-center cursor-pointer text-base font-semibold text-gray-700 mb-2"
-            onClick={() => setHeadersExpanded(!headersExpanded)}
+            className="bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-x-auto"
             style={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#444',
-              marginBottom: '8px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer'
+              backgroundColor: '#f8f9fa',
+              padding: '12px',
+              borderRadius: '0 0 4px 4px',
+              border: '1px solid #e0e0e0',
+              borderTop: 'none',
+              maxHeight: '300px'
             }}
           >
-            <div>Headers Used (template for this job)</div>
-            <div 
-              className="toggle-btn text-gray-400 text-xl transition-transform"
-              style={{
-                fontSize: '22px',
-                color: '#999',
-                transform: headersExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s'
-              }}
-            >
-              {headersExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </div>
-          </div>
-          <div 
-            className="headers-content overflow-hidden transition-all"
-            style={{
-              height: headersExpanded ? '250px' : '120px',
-              overflow: 'hidden',
-              transition: 'height 0.3s ease'
-            }}
-          >
-            <pre 
-              className="text-sm bg-gray-50 p-3 rounded overflow-y-auto"
-              style={{
-                fontSize: '0.85rem',
-                color: '#333',
-                background: '#f9f9f9',
-                padding: '0.75rem',
-                borderRadius: '6px',
-                marginTop: 0,
-                maxHeight: 'none',
-                overflowY: 'auto'
-              }}
-            >
-              {JSON.stringify(job.headersUsed, null, 2)}
+            <pre className="text-xs font-mono text-gray-700 dark:text-gray-300">
+              {job.headersUsed ? JSON.stringify(job.headersUsed, null, 2) : 'No headers used'}
             </pre>
           </div>
-        </div>
-      ) : (
-        <div 
-          className="mt-4 text-sm text-gray-500 italic"
-          style={{
-            marginTop: '15px',
-            fontSize: '14px',
-            color: '#666',
-            fontStyle: 'italic'
-          }}
-        >
-          Headers information not available in this report version
-        </div>
-      )}
+        )}
+      </div>
+      
+      <div className="mt-4 pt-3 border-t dark:border-gray-700">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-medium">Note:</span> This report follows the CBZ API Delta Schema v1.0
+        </p>
+      </div>
     </div>
-  </div>
   );
 };
 

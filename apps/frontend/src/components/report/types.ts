@@ -1,27 +1,19 @@
 /**
- * Report UI Type Definitions
+ * Report UI Type Definitions - Matching Old Static Report Structure
  */
 
-// Core data models matching the backend data structure
+// Core data models matching the old static report structure
 export interface ReportDiff {
-  path: string[];
-  severity: 'Error' | 'Warning' | 'Info';
   kind: 'E' | 'A' | 'D' | 'N';  // Edit, Array, Delete, New
-  changeType: 'structural' | 'value';
-  priority: number;
-  message: string;
+  path: string[];
   lhs?: any;  // left-hand side (original value)
   rhs?: any;  // right-hand side (new value)
 }
 
 export interface ReportEndpoint {
   key: string;
-  // Additional properties to match backend structure
-  id?: string;
-  name?: string;
-  endpoint: string;
-  path: string;
   params: Record<string, string | number>;
+  cbLoc: string; // geo location code
   urlA: string; // prod URL
   urlB: string; // staging URL
   statusA: number; // prod status code
@@ -30,14 +22,12 @@ export interface ReportEndpoint {
   responseTimeB: number; // staging response time in ms
   timestampA: string; // ISO string
   timestampB: string; // ISO string
-  cbLoc: string; // geo location code
+  headersUsedA: Record<string, any>;
+  headersUsedB: Record<string, any>;
+  rawJsonA: any; // Production API response data
+  rawJsonB: any; // Staging API response data
   diffs: ReportDiff[];
-  diffCounts?: { total: number; [key: string]: number };
-  error?: string;
-  prodResponse?: any; // Production API response data
-  stagingResponse?: any; // Staging API response data
-  responseA?: { success: boolean; error?: string; data?: any };
-  responseB?: { success: boolean; error?: string; data?: any };
+  error?: string | null;
 }
 
 export interface ReportMeta {
@@ -48,32 +38,60 @@ export interface ReportMeta {
 
 export interface ReportSummary {
   totalComparisons: number;
-  successful: number;
   failures: number;
   endpointsWithDiffs: number;
+  totalDiffs: number;
+  successful: number;
 }
 
+// Main report structure matching old static report exactly
 export interface ReportJob {
+  jobName: string;
+  platform: string;
+  timestamp: string;
+  testEngineer: string;
+  totalTasks: number;
+  failures: number;
+  diffsFound: number;
+  summary: ReportSummary;
+  meta: ReportMeta;
+  headersUsed: Record<string, any>;
+  endpoints: ReportEndpoint[];
+  jobs?: ReportJobDetail[]; // Sub-jobs if any
+}
+
+// Individual job detail (for nested jobs)
+export interface ReportJobDetail {
   jobId?: string;
   jobName: string;
-  timestamp?: string; // ISO string 
+  timestamp?: string;
   testEngineer?: string;
   platform?: string;
   baseUrlA?: string;
   baseUrlB?: string;
+  title?: string;
   meta?: ReportMeta;
   summary?: ReportSummary;
   endpoints?: ReportEndpoint[];
-  records?: Array<any>; // For compatibility with backend structure
+  records?: Array<any>;
   headersUsed?: Record<string, string>;
 }
 
 export interface Report {
   id: string;
   timestamp: string;
-  testEngineer?: string; // Added to match backend API response
-  jobs: ReportJob[];
-  meta?: Record<string, any>;
+  testEngineer?: string;
+  // Use the main report structure directly
+  jobName: string;
+  platform: string;
+  totalTasks: number;
+  failures: number;
+  diffsFound: number;
+  summary: ReportSummary;
+  meta: ReportMeta;
+  headersUsed: Record<string, any>;
+  endpoints: ReportEndpoint[];
+  jobs?: ReportJobDetail[];
 }
 
 // API Response type (used for API responses)  

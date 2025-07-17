@@ -10,13 +10,15 @@ const DiffViewer = ({ diffs }: DiffViewerProps) => {
     return <div className="text-sm text-gray-500">No differences detected</div>;
   }
 
-  // Helper to format JSON values safely
+  // Helper to format JSON values safely and maintain readability
   const formatValue = (value: any): string => {
     if (value === undefined) return '<undefined>';
     if (value === null) return '<null>';
     if (typeof value === 'object') {
       try {
-        return JSON.stringify(value);
+        // Use pretty formatting for small objects, compact for larger ones
+        const json = JSON.stringify(value, null, 2);
+        return json.length > 200 ? JSON.stringify(value) : json;
       } catch (e) {
         return String(value);
       }
@@ -38,6 +40,10 @@ const DiffViewer = ({ diffs }: DiffViewerProps) => {
       bgColor = '#fff8e6';
       textColor = '#f39c12';
       icon = '⚠️';
+    } else if (severity === 'Critical') {
+      bgColor = '#f8d7da';
+      textColor = '#c0392b';
+      icon = '🚨';
     }
 
     return (

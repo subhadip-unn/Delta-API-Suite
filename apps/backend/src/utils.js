@@ -233,6 +233,19 @@ function normalizeConfig(config) {
     normalizedConfig.ids = {};
   }
   
+  // If no jobs but we have endpoints, create a default job structure
+  if (!normalizedConfig.jobs && normalizedConfig.endpoints && normalizedConfig.endpoints.length > 0) {
+    const endpointKeys = normalizedConfig.endpoints.map(ep => ep.key);
+    normalizedConfig.jobs = [{
+      name: 'API Comparison',
+      platform: 'i', // Default platform
+      ignorePaths: [],
+      retryPolicy: { retries: 3, delayMs: 1000 },
+      endpointsToRun: endpointKeys
+    }];
+    console.log(`Created default job in normalizeConfig for ${normalizedConfig.endpoints.length} endpoints`);
+  }
+  
   return normalizedConfig;
 }
 

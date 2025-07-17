@@ -5,11 +5,13 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Switch } from "../../components/ui/switch";
 import { useConfig } from '../../contexts/ConfigContext';
+import { useToast } from '../../hooks/use-toast';
 import { Header } from '../../types/config';
-import { PlusCircle, Edit, Save, Trash } from 'lucide-react';
+import { PlusCircle, Edit, Save, Trash, Download } from 'lucide-react';
 
 export default function HeadersTab() {
   const { config, setHeaders } = useConfig();
+  const { toast } = useToast();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newHeader, setNewHeader] = useState<Header>({
     key: '',
@@ -96,21 +98,35 @@ export default function HeadersTab() {
   ];
 
   const handleLoadCBHeaders = () => {
-    setHeaders(cbHeaders);
+    try {
+      setHeaders(cbHeaders);
+      toast({
+        title: "Headers Loaded",
+        description: "CB headers loaded successfully"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error Loading Headers",
+        description: error.message || 'Failed to load headers',
+        variant: "destructive"
+      });
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 justify-end">
-        <Button variant="outline" onClick={handleLoadCBHeaders}>Load CB Headers</Button>
-      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>HTTP Headers</CardTitle>
-          <CardDescription>
-            Configure default HTTP headers sent with API requests.
-            Enable/disable headers as needed without removing them.
-          </CardDescription>
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <CardTitle>HTTP Headers</CardTitle>
+            <CardDescription>
+              Configure default HTTP headers sent with API requests.
+              Enable/disable headers as needed without removing them.
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleLoadCBHeaders} className="whitespace-nowrap flex-shrink-0">
+            <Download className="mr-2 h-4 w-4" /> Load CB Headers
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">

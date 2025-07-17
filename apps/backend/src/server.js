@@ -2,8 +2,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const { runAllJobs } = require('./comparator');
 const { getIndianTimestamp, normalizeConfig } = require('./utils');
 
@@ -15,14 +13,9 @@ app.use(cors()); // Enable CORS for frontend requests
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-// Store for current report
+// In-memory storage for reports (no disk persistence)
 let currentReport = null;
-const REPORTS_DIR = path.join(__dirname, '../reports');
-
-// Ensure reports directory exists
-if (!fs.existsSync(REPORTS_DIR)) {
-  fs.mkdirSync(REPORTS_DIR, { recursive: true });
-}
+const reportsStore = new Map(); // Map<reportId, reportData>
 
 /**
  * POST /api/compare
@@ -66,20 +59,11 @@ app.post('/api/compare', async (req, res) => {
       options
     };
     
-    // Store the report in memory
+    // Store the report in memory only
     currentReport = completeReport;
+    reportsStore.set(folderTs, completeReport);
     
-    // Save the report to disk
-    const reportFolder = path.join(REPORTS_DIR, folderTs);
-    if (!fs.existsSync(reportFolder)) {
-      fs.mkdirSync(reportFolder, { recursive: true });
-    }
-    
-    fs.writeFileSync(
-      path.join(reportFolder, 'report.json'), 
-      JSON.stringify(completeReport, null, 2),
-      'utf8'
-    );
+    console.log(`Report ${folderTs} stored in memory. Total reports in memory: ${reportsStore.size}`);
     
     // Return success to client with report ID
     return res.json({ 
@@ -104,28 +88,24 @@ app.post('/api/compare', async (req, res) => {
  */
 app.get('/api/reports', (req, res) => {
   try {
-    // Read all report folders
-    const reports = fs.readdirSync(REPORTS_DIR)
-      .filter(item => fs.statSync(path.join(REPORTS_DIR, item)).isDirectory())
-      .map(folder => {
+    // Get reports from in-memory store
+    const reports = Array.from(reportsStore.entries())
+      .map(([reportId, reportData]) => {
         try {
-          const reportPath = path.join(REPORTS_DIR, folder, 'report.json');
-          if (fs.existsSync(reportPath)) {
-            const reportData = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-            return {
-              id: folder,
-              timestamp: reportData.timestamp || folder,
-              testEngineer: reportData.testEngineer,
-              jobCount: reportData.jobs?.length || 0
-            };
-          }
-          return { id: folder, timestamp: folder };
-        } catch (e) {
-          return { id: folder, timestamp: folder, error: e.message };
+          return {
+            id: reportId,
+            timestamp: reportData.timestamp,
+            testEngineer: reportData.testEngineer || 'Unknown',
+            jobCount: reportData.jobs ? reportData.jobs.length : 0
+          };
+        } catch (err) {
+          console.error(`Error processing report ${reportId}:`, err);
+          return null;
         }
       })
-      .sort((a, b) => b.id.localeCompare(a.id)); // Sort newest first
-      
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
     res.json({ success: true, reports });
   } catch (error) {
     console.error('Error listing reports:', error);
@@ -149,17 +129,12 @@ app.get('/api/reports/:reportId', (req, res) => {
       return res.json({ success: true, report: currentReport });
     }
     
-    // Otherwise load from disk
-    const reportPath = path.join(REPORTS_DIR, reportId, 'report.json');
+    // Try to load from in-memory store
+    const reportData = reportsStore.get(reportId);
     
-    if (!fs.existsSync(reportPath)) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Report not found'
-      });
+    if (!reportData) {
+      return res.status(404).json({ success: false, error: 'Report not found' });
     }
-    
-    const reportData = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
     res.json({ success: true, report: reportData });
   } catch (error) {
     console.error(`Error retrieving report:`, error);
@@ -199,17 +174,11 @@ app.post('/api/upload-report', (req, res) => {
       reportData.timestamp = humanTs;
     }
     
-    // Save to disk
-    const reportFolder = path.join(REPORTS_DIR, folderTs);
-    if (!fs.existsSync(reportFolder)) {
-      fs.mkdirSync(reportFolder, { recursive: true });
-    }
+    // Store in memory only
+    currentReport = reportData;
+    reportsStore.set(folderTs, reportData);
     
-    fs.writeFileSync(
-      path.join(reportFolder, 'report.json'),
-      JSON.stringify(reportData, null, 2),
-      'utf8'
-    );
+    console.log(`Report ${folderTs} uploaded and stored in memory. Total reports: ${reportsStore.size}`);
     
     // Return success with the report ID
     res.json({

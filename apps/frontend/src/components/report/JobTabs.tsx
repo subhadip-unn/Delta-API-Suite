@@ -23,25 +23,39 @@ const JobTabs = ({ jobs, selectedJobIndex, onSelectJob }: JobTabsProps) => {
         borderBottom: '1px solid #ddd'
       }}
     >
-      {jobs.map((job, idx) => (
-        <button
-          key={idx}
-          onClick={() => onSelectJob(idx)}
-          className={`mr-2 p-2 rounded text-sm ${selectedJobIndex === idx ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
-          style={{
-            background: selectedJobIndex === idx ? '#3498db' : '#f0f0f0',
-            border: 'none',
-            padding: '8px 15px',
-            marginRight: '5px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            color: selectedJobIndex === idx ? 'white' : 'inherit'
-          }}
-        >
-          {job.jobName}
-        </button>
-      ))}
+      {/* Platform order: iOS, Android, Mobile-Web, Desktop-Web */}
+      {['i', 'a', 'm', 'w'].map((platform, tabIdx) => {
+        // Find job for this platform
+        const jobIdx = jobs.findIndex(j => j.platform === platform);
+        const job = jobs[jobIdx];
+        let label = '';
+        if (platform === 'i') label = 'iOS: Stg vs Prod (explicit pairs)';
+        if (platform === 'a') label = 'Android: Stg vs Prod (explicit pairs)';
+        if (platform === 'm') label = 'Mobile-Web: Stg vs Prod (explicit pairs)';
+        if (platform === 'w') label = 'Desktop-Web: Stg vs Prod (explicit pairs)';
+        return (
+          <button
+            key={platform}
+            onClick={() => jobIdx !== -1 && onSelectJob(jobIdx)}
+            className={`mr-2 p-2 rounded text-sm ${selectedJobIndex === jobIdx ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200'} ${jobIdx === -1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            style={{
+              background: selectedJobIndex === jobIdx ? '#3498db' : '#f0f0f0',
+              border: 'none',
+              padding: '8px 15px',
+              marginRight: '5px',
+              borderRadius: '4px',
+              cursor: jobIdx === -1 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              color: selectedJobIndex === jobIdx ? 'white' : 'inherit',
+              fontWeight: selectedJobIndex === jobIdx ? 'bold' : 'normal',
+              minWidth: '215px',
+            }}
+            disabled={jobIdx === -1}
+          >
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 };

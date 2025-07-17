@@ -10,6 +10,7 @@ lerna-debug.log*
 # Dependencies
 node_modules
 .pnpm-store
+package-lock.json
 
 # Build outputs
 dist

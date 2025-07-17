@@ -58,6 +58,7 @@ async function runJob(jobConfig, headers, ids, endpoints) {
       platform: platform // Ensure consistent platform property
     };
     
+
     return normalizedEndpoint;
   }
   
@@ -91,6 +92,7 @@ async function runJob(jobConfig, headers, ids, endpoints) {
       platform // Normalize to single platform format
     }));
     
+
     if (Array.isArray(jobConfig.endpointsToRun) && jobConfig.endpointsToRun.length > 0) {
       const filteredEndpoints = platformEndpoints.filter(e =>
         jobConfig.endpointsToRun.includes(e.key)
@@ -199,18 +201,18 @@ async function runJob(jobConfig, headers, ids, endpoints) {
             
             try {
               // Handle baseUrl vs baseA/baseB naming inconsistency
-              // First check for job-specific baseUrlA/baseUrlB
-              let baseUrlA = jobConfig.baseUrlA || jobConfig.baseA;
-              let baseUrlB = jobConfig.baseUrlB || jobConfig.baseB;
+              // First check for endpoint-specific baseUrlA/baseUrlB, then job-specific
+              let baseUrlA = epA.baseUrlA || jobConfig.baseUrlA || jobConfig.baseA;
+              let baseUrlB = epB.baseUrlB || jobConfig.baseUrlB || jobConfig.baseB;
               
               console.log(`Using base URLs: A=${baseUrlA}, B=${baseUrlB}`);
               
               // Validate baseUrls
               if (!baseUrlA) {
-                console.error(`Missing base URL A for job ${jobConfig.name}`);
+                console.error(`Missing base URL A for endpoint ${epA.key} in job ${jobConfig.name}`);
               }
               if (!baseUrlB) {
-                console.error(`Missing base URL B for job ${jobConfig.name}`);
+                console.error(`Missing base URL B for endpoint ${epB.key} in job ${jobConfig.name}`);
               }
               
               urlA = buildUrl(baseUrlA, pathA);
@@ -366,8 +368,19 @@ async function runJob(jobConfig, headers, ids, endpoints) {
     platform,
     baseUrlA: jobConfig.baseUrlA || jobConfig.baseA || '',
     baseUrlB: jobConfig.baseUrlB || jobConfig.baseB || '',
-    summary: summary,
-    endpoints: endpointMappings,
+    summary: {
+      ...summary,
+      totalDiffs: summary.totalDiffs || 0,
+      endpointsWithDiffs: summary.endpointsWithDiffs || 0
+    },
+    endpoints: endpointMappings.map(endpoint => ({
+      ...endpoint,
+      params: endpoint.params || {},
+      timestampA: new Date().toISOString(),
+      timestampB: new Date().toISOString(),
+      headersUsedA: headersTempl,
+      headersUsedB: headersTempl
+    })),
     records: allRecords
   };
 }
@@ -376,12 +389,62 @@ async function runJob(jobConfig, headers, ids, endpoints) {
  * Run all jobs with given configuration
  */
 async function runAllJobs(configState, qaName) {
-  // Check if configState is valid
-  if (!configState || !Array.isArray(configState.jobs) || configState.jobs.length === 0) {
-    console.error('Invalid config state:', configState);
+  // Handle both old format (with jobs array) and new format (direct endpoints)
+  let { jobs = [], headers = {}, ids = {}, endpoints = [] } = configState;
+  
+  // If no jobs but we have endpoints, create a default job
+  if (jobs.length === 0 && endpoints.length > 0) {
+    // Extract endpoint keys for the job
+    const endpointKeys = endpoints.map(ep => ep.key);
+    
+    jobs = [{
+      name: 'API Comparison',
+      platform: 'i', // Default platform
+      ignorePaths: [],
+      retryPolicy: { retries: 3, delayMs: 1000 },
+      endpointsToRun: endpointKeys // Tell the job which endpoints to run
+    }];
+    console.log(`Created default job for ${endpoints.length} endpoints: ${endpointKeys.join(', ')}`);
   }
-
-  const { jobs = [], headers = {}, ids = {}, endpoints = [] } = configState;
+  
+  // Check if we have valid data
+  if (jobs.length === 0) {
+    console.error('No jobs to run. Config state:', configState);
+    // Return empty report structure
+    return {
+      jobName: 'API Comparison',
+      platform: 'i',
+      timestamp: new Date().toLocaleString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(/\//g, '-').replace(', ', ' '),
+      testEngineer: qaName || 'Anonymous User',
+      totalTasks: 0,
+      failures: 0,
+      diffsFound: 0,
+      summary: {
+        totalComparisons: 0,
+        failures: 0,
+        endpointsWithDiffs: 0,
+        totalDiffs: 0,
+        successful: 0
+      },
+      meta: {
+        endpointsRun: [],
+        idsUsed: [],
+        geoUsed: []
+      },
+      headersUsed: headers,
+      endpoints: [],
+      jobs: []
+    };
+  }
 
   // Ensure we have a valid QA name
   const testEngineer = qaName || 'QA Engineer';
@@ -394,16 +457,71 @@ async function runAllJobs(configState, qaName) {
   // Calculate overall stats
   const allEndpoints = jobResults.reduce((acc, job) => acc + (job.endpoints?.length || 0), 0);
   
-  // Build and return the complete report with proper structure
-  return {
-    testEngineer: qaName || 'Anonymous User',
-    timestamp: new Date().toISOString(),
-    jobs: jobResults,
-    meta: {
-      endpointsRun: allEndpoints,
-      idsUsed: ids ? Object.keys(ids).length : 0,
-      geoUsed: headers ? Object.keys(headers).filter(h => h.includes('loc')).length : 0
+  // Calculate overall summary stats
+  const totalTasks = jobResults.reduce((acc, job) => acc + (job.endpoints?.length || 0), 0);
+  const totalFailures = jobResults.reduce((acc, job) => acc + (job.summary?.failures || 0), 0);
+  const totalDiffs = jobResults.reduce((acc, job) => acc + (job.summary?.totalDiffs || 0), 0);
+  const totalSuccessful = jobResults.reduce((acc, job) => acc + (job.summary?.successful || 0), 0);
+  const endpointsWithDiffs = jobResults.reduce((acc, job) => acc + (job.summary?.endpointsWithDiffs || 0), 0);
+  
+  // Extract all unique endpoint keys, IDs, and geo locations
+  const allEndpointKeys = new Set();
+  const allIdsUsed = new Set();
+  const allGeoUsed = new Set();
+  
+  jobResults.forEach(job => {
+    if (job.endpoints) {
+      job.endpoints.forEach(endpoint => {
+        allEndpointKeys.add(endpoint.key);
+        if (endpoint.geo) allGeoUsed.add(endpoint.geo);
+        if (endpoint.idValue) allIdsUsed.add(endpoint.idValue.toString());
+      });
     }
+  });
+  
+  // Build and return the complete report with structure matching old static report
+  return {
+    jobName: jobResults[0]?.jobName || 'API Comparison',
+    platform: jobResults[0]?.platform || 'i',
+    timestamp: new Date().toLocaleString('en-IN', { 
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(/\//g, '-').replace(', ', ' '),
+    testEngineer: qaName || 'Anonymous User',
+    totalTasks,
+    failures: totalFailures,
+    diffsFound: totalDiffs,
+    summary: {
+      totalComparisons: totalTasks,
+      failures: totalFailures,
+      endpointsWithDiffs,
+      totalDiffs,
+      successful: totalSuccessful
+    },
+    meta: {
+      endpointsRun: Array.from(allEndpointKeys),
+      idsUsed: Array.from(allIdsUsed),
+      geoUsed: Array.from(allGeoUsed)
+    },
+    headersUsed: headers,
+    endpoints: jobResults.reduce((acc, job) => {
+      if (job.endpoints) {
+        acc.push(...job.endpoints.map(endpoint => ({
+          ...endpoint,
+          cbLoc: endpoint.geo || 'IN',
+          rawJsonA: endpoint.responseA?.data || null,
+          rawJsonB: endpoint.responseB?.data || null
+        })));
+      }
+      return acc;
+    }, []),
+    jobs: jobResults
   };
 }
 
