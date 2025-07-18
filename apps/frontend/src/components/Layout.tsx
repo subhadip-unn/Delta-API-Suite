@@ -10,7 +10,7 @@ import { Toaster } from '@/components/ui/toaster';
 
 export const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { qaName, logout } = useAuth();
+  const { qaName, userRole, logout } = useAuth();
   
   // Get the initials from the QA name for the avatar
   const getInitials = (name: string) => {
@@ -143,16 +143,16 @@ export const Layout = () => {
             </Avatar>
             <div className="flex flex-col">
               <span className="text-sm font-medium">{qaName}</span>
-              <span className="text-xs text-muted-foreground">QA Engineer</span>
+              <span className="text-xs text-muted-foreground">{userRole}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-16 flex items-center px-4 border-b border-border">
+        <header className="h-16 flex items-center px-4 border-b border-border shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -176,7 +176,7 @@ export const Layout = () => {
               <DropdownMenuContent align="end">
                 <div className="px-2 py-1.5">
                   <p className="text-sm font-medium">{qaName}</p>
-                  <p className="text-xs text-muted-foreground">QA Engineer</p>
+                  <p className="text-xs text-muted-foreground">{userRole}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
@@ -186,8 +186,10 @@ export const Layout = () => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-hidden">
-          <Outlet />
+        <main className="flex-1 overflow-auto min-w-0">
+          <div className="h-full w-full">
+            <Outlet />
+          </div>
         </main>
       </div>
       <Toaster />

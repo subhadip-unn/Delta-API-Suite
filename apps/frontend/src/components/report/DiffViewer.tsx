@@ -26,24 +26,33 @@ const DiffViewer = ({ diffs }: DiffViewerProps) => {
     return String(value);
   };
 
-  // Get severity badge
-  const getSeverityBadge = (severity: string) => {
+  // Get severity badge based on diff kind
+  const getSeverityBadge = (kind: 'E' | 'A' | 'D' | 'N') => {
     let bgColor = '#e7f5ea';
     let textColor = '#27ae60';
     let icon = '✓';
+    let label = 'Modified';
 
-    if (severity === 'Error') {
+    if (kind === 'D') {
       bgColor = '#fdedee';
       textColor = '#e74c3c';
       icon = '❌';
-    } else if (severity === 'Warning') {
+      label = 'Deleted';
+    } else if (kind === 'N') {
+      bgColor = '#e7f5ea';
+      textColor = '#27ae60';
+      icon = '➕';
+      label = 'Added';
+    } else if (kind === 'E') {
       bgColor = '#fff8e6';
       textColor = '#f39c12';
       icon = '⚠️';
-    } else if (severity === 'Critical') {
-      bgColor = '#f8d7da';
-      textColor = '#c0392b';
-      icon = '🚨';
+      label = 'Changed';
+    } else if (kind === 'A') {
+      bgColor = '#e3f2fd';
+      textColor = '#1976d2';
+      icon = '🔄';
+      label = 'Array';
     }
 
     return (
@@ -58,7 +67,7 @@ const DiffViewer = ({ diffs }: DiffViewerProps) => {
           marginRight: '8px'
         }}
       >
-        {icon} {severity}
+        {icon} {label}
       </span>
     );
   };
@@ -184,7 +193,7 @@ const DiffViewer = ({ diffs }: DiffViewerProps) => {
                       alignItems: 'center'
                     }}
                   >
-                    {getSeverityBadge(diff.severity)}
+                    {getSeverityBadge(diff.kind)}
                   </div>
                   <div 
                     className="font-mono text-blue-700"
@@ -195,17 +204,7 @@ const DiffViewer = ({ diffs }: DiffViewerProps) => {
                   >
                     {diff.path?.join('.') || 'root'}
                   </div>
-                  {diff.message && (
-                    <div
-                      style={{
-                        marginTop: '4px',
-                        fontSize: '0.8rem',
-                        color: '#666'
-                      }}
-                    >
-                      {diff.message}
-                    </div>
-                  )}
+                  {/* Message removed as it's not in ReportDiff type */}
                 </div>
               </td>
               <td

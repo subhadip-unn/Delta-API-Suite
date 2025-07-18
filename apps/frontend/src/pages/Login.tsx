@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type UserRole = 'QA Engineer' | 'Developer' | 'Manager';
 
 export default function Login() {
   const [name, setName] = useState('');
+  const [role, setRole] = useState<UserRole>('QA Engineer');
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -18,7 +22,7 @@ export default function Login() {
       return;
     }
     
-    login(name);
+    login(name, role);
     navigate('/dashboard');
   };
 
@@ -27,7 +31,7 @@ export default function Login() {
       <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg border border-border shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">CBZ API Delta</h1>
-          <p className="text-muted-foreground mt-2">QA Engineer Login</p>
+          <p className="text-muted-foreground mt-2">Team Member Login</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -47,6 +51,22 @@ export default function Login() {
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="role" className="text-sm font-medium">
+              Select your role
+            </label>
+            <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select your role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="QA Engineer">QA Engineer</SelectItem>
+                <SelectItem value="Developer">Developer</SelectItem>
+                <SelectItem value="Manager">Manager</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Button type="submit" className="w-full">

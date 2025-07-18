@@ -24,10 +24,9 @@ const JobTabs = ({ jobs, selectedJobIndex, onSelectJob }: JobTabsProps) => {
       }}
     >
       {/* Platform order: iOS, Android, Mobile-Web, Desktop-Web */}
-      {['i', 'a', 'm', 'w'].map((platform, tabIdx) => {
+      {['i', 'a', 'm', 'w'].map((platform) => {
         // Find job for this platform
         const jobIdx = jobs.findIndex(j => j.platform === platform);
-        const job = jobs[jobIdx];
         let label = '';
         if (platform === 'i') label = 'iOS: Stg vs Prod (explicit pairs)';
         if (platform === 'a') label = 'Android: Stg vs Prod (explicit pairs)';

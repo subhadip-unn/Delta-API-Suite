@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ReportEndpoint } from './types';
-import { ChevronDown, ChevronUp, Code, FileJson } from 'lucide-react';
+import { ChevronDown, ChevronUp, Code, FileJson, Eye } from 'lucide-react';
 import DiffViewer from './DiffViewer';
+import { MonacoDiffViewer } from './MonacoDiffViewer';
 
 interface EndpointCardProps {
   endpoint: ReportEndpoint;
@@ -434,6 +435,37 @@ const EndpointCard = ({ endpoint }: EndpointCardProps) => {
               {showRawJson ? "Hide JSON" : "Show JSON"}
               {showRawJson ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
+            
+            {/* Monaco Diff Viewer Button */}
+            <MonacoDiffViewer
+              dataA={endpoint.rawJsonA}
+              dataB={endpoint.rawJsonB}
+              endpointA={endpoint.key}
+              endpointB={endpoint.key}
+              platform={'unknown'} // Platform info not in endpoint, will get from parent
+              geo={endpoint.cbLoc}
+              diffSummary={undefined} // Will be enhanced later
+              trigger={
+                <button
+                  className="monaco-diff-btn px-3 py-1 rounded text-white text-sm flex items-center gap-1"
+                  style={{
+                    backgroundColor: '#4caf50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '0.3rem 0.6rem',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Eye size={16} />
+                  Professional Diff
+                </button>
+              }
+            />
           </div>
 
           {/* Critical Changes Summary - Always visible */}
