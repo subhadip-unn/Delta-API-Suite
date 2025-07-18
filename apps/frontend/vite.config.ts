@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': '/src', // Simple alias that works without __dirname
+      '@': path.resolve(__dirname, './src'),
     },
   },
   // Development server configuration with API proxy
