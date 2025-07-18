@@ -195,6 +195,68 @@ app.post('/api/upload-report', (req, res) => {
   }
 });
 
+/**
+ * POST /api/proxy-fetch
+ * Proxy endpoint for external API calls to avoid CORS issues
+ */
+app.post('/api/proxy-fetch', async (req, res) => {
+  try {
+    const { url, method = 'GET', headers = {}, body } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing URL parameter'
+      });
+    }
+    
+    console.log(`[PROXY] ${method} ${url}`);
+    
+    // Import fetch dynamically (for Node.js compatibility)
+    const fetch = (await import('node-fetch')).default;
+    
+    const fetchOptions = {
+      method,
+      headers: {
+        'User-Agent': 'CBZ-API-Delta-Tool/1.0',
+        ...headers
+      }
+    };
+    
+    if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+      fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+      if (!fetchOptions.headers['Content-Type']) {
+        fetchOptions.headers['Content-Type'] = 'application/json';
+      }
+    }
+    
+    const response = await fetch(url, fetchOptions);
+    const responseText = await response.text();
+    
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      responseData = responseText;
+    }
+    
+    res.json({
+      success: true,
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      data: responseData
+    });
+    
+  } catch (error) {
+    console.error('[PROXY] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Proxy request failed'
+    });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`CBZ API Delta backend server running on port ${PORT}`);

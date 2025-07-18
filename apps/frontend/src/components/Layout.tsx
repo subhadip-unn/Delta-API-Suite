@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Toaster } from '@/components/ui/toaster';
 export const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { qaName, userRole, logout } = useAuth();
+  const location = useLocation();
   
   // Get the initials from the QA name for the avatar
   const getInitials = (name: string) => {
@@ -98,6 +99,31 @@ export const Layout = () => {
             <Upload className="mr-2 h-4 w-4" />
             Upload Report
           </NavLink>
+          <Link
+            to="/json-diff"
+            className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              location.pathname === '/json-diff'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+            }`}
+          >
+            <div className="mr-3 h-4 w-4 relative">
+              <div className="absolute inset-0 animate-pulse">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                  <path d="M12 2L2 7v10c0 5.55 3.84 10 9 10s9-4.45 9-10V7l-10-5z" opacity="0.3"/>
+                  <path d="M12 2L22 7v10c0 5.55-3.84 10-9 10s-9-4.45-9-10V7l10-5z"/>
+                </svg>
+              </div>
+              <div className="absolute inset-0 animate-spin" style={{animationDuration: '3s'}}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                  <path d="M12 2L2 7v10c0 5.55 3.84 10 9 10s9-4.45 9-10V7l-10-5z"/>
+                </svg>
+              </div>
+            </div>
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">
+              DeltaPro+
+            </span>
+          </Link>
         </nav>
 
         {/* Sidebar Footer with Dark Mode Toggle */}

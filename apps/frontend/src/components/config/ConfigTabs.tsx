@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import EndpointsTab from './EndpointsTab';
 import JobsTab from './JobsTab';
 import HeadersTab from './HeadersTab';
-import IdsTab from './IdsTab';
+import ParamsTab from './IdsTab';
 
 export default function ConfigTabs() {
   return (
@@ -13,7 +13,7 @@ export default function ConfigTabs() {
         <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
         <TabsTrigger value="jobs">Jobs</TabsTrigger>
         <TabsTrigger value="headers">Headers</TabsTrigger>
-        <TabsTrigger value="ids">IDs</TabsTrigger>
+        <TabsTrigger value="ids">Params</TabsTrigger>
       </TabsList>
       
       <div className="flex-grow overflow-hidden">
@@ -73,7 +73,7 @@ export default function ConfigTabs() {
             transition={{ duration: 0.3 }}
             className="space-y-4"
           >
-            <IdsTab />
+            <ParamsTab />
           </motion.div>
         </TabsContent>
       </div>

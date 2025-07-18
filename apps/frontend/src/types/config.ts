@@ -42,6 +42,7 @@ export interface Header {
 export interface IdValue {
   name: string;
   value: string;
+  enabled?: boolean;
 }
 
 // ID config item

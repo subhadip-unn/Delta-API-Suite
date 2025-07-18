@@ -1,228 +1,236 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Switch } from "../../components/ui/switch";
 import { useConfig } from '../../contexts/ConfigContext';
-import { Id } from '../../types/config';
-import { PlusCircle, Edit, Save, Trash, X } from 'lucide-react';
+import { useToast } from '../../hooks/use-toast';
+import { IdValue } from '../../types/config';
+import { PlusCircle, Edit, Save, Trash, Download } from 'lucide-react';
 
-export default function IdsTab() {
+interface ParamItem {
+  key: string;
+  name: string;
+  value: string;
+  enabled: boolean;
+}
+
+export default function ParamsTab() {
   const { config, setIds } = useConfig();
+  const { toast } = useToast();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [newId, setNewId] = useState<Id>({
-    category: '',
-    values: []
+  const [newParam, setNewParam] = useState<ParamItem>({
+    key: '',
+    name: '',
+    value: '',
+    enabled: true
   });
-  const [newValue, setNewValue] = useState<string>('');
 
-  const handleAddId = () => {
-    if (newId.category && newId.values.length > 0) {
-      const updatedIds = [...config.ids, { ...newId }];
-      setIds(updatedIds);
-      setNewId({
-        category: '',
-        values: []
+  // Convert object-based ids to array format for display
+  const paramsArray: ParamItem[] = [];
+  Object.entries(config.ids || {}).forEach(([category, idValues]) => {
+    if (Array.isArray(idValues)) {
+      idValues.forEach((idValue) => {
+        paramsArray.push({
+          key: `${category}:${idValue.name}`,
+          name: idValue.name,
+          value: idValue.value,
+          enabled: idValue.enabled || true
+        });
+      });
+    }
+  });
+
+  const handleAddParam = () => {
+    if (newParam.key && newParam.name && newParam.value) {
+      const updatedParams = [...paramsArray, { ...newParam }];
+      convertAndSetIds(updatedParams);
+      setNewParam({
+        key: '',
+        name: '',
+        value: '',
+        enabled: true
       });
     }
   };
 
-  const handleEditId = (index: number) => {
+  const handleEditParam = (index: number) => {
     setEditingIndex(index);
-    setNewId({ ...config.ids[index] });
+    setNewParam({ ...paramsArray[index] });
   };
 
   const handleSaveEdit = () => {
-    if (editingIndex !== null && newId.category && newId.values.length > 0) {
-      const updatedIds = [...config.ids];
-      updatedIds[editingIndex] = { ...newId };
-      setIds(updatedIds);
+    if (editingIndex !== null && newParam.key && newParam.name && newParam.value) {
+      const updatedParams = [...paramsArray];
+      updatedParams[editingIndex] = { ...newParam };
+      convertAndSetIds(updatedParams);
       setEditingIndex(null);
-      setNewId({
-        category: '',
-        values: []
+      setNewParam({
+        key: '',
+        name: '',
+        value: '',
+        enabled: true
       });
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingIndex(null);
-    setNewId({
-      category: '',
-      values: []
+  const handleDeleteParam = (index: number) => {
+    const updatedParams = paramsArray.filter((_, i) => i !== index);
+    convertAndSetIds(updatedParams);
+  };
+
+  const convertAndSetIds = (params: ParamItem[]) => {
+    const idsObject: { [category: string]: IdValue[] } = {};
+    params.forEach((param) => {
+      if (param.enabled) {
+        const [category, ...nameParts] = param.key.split(':');
+        const name = nameParts.join(':');
+        if (!idsObject[category]) {
+          idsObject[category] = [];
+        }
+        idsObject[category].push({
+          name: name,
+          value: param.value,
+          enabled: param.enabled
+        });
+      }
     });
+    setIds(idsObject);
   };
 
-  const handleDeleteId = (index: number) => {
-    const updatedIds = config.ids.filter((_, i) => i !== index);
-    setIds(updatedIds);
-  };
-
-  const handleAddValue = () => {
-    if (newValue && !newId.values.includes(newValue)) {
-      setNewId({
-        ...newId,
-        values: [...newId.values, newValue]
-      });
-      setNewValue('');
-    }
-  };
-
-  const handleDeleteValue = (valueIndex: number) => {
-    setNewId({
-      ...newId,
-      values: newId.values.filter((_, i) => i !== valueIndex)
+  const exportParams = () => {
+    const dataStr = JSON.stringify(paramsArray, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'params.json';
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    toast({
+      title: "Params Exported",
+      description: "Params have been exported to params.json"
     });
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter' && newValue) {
-      event.preventDefault();
-      handleAddValue();
-    }
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>IDs</CardTitle>
+          <CardTitle>Params Configuration</CardTitle>
           <CardDescription>
-            Configure IDs for API testing. IDs are organized by category 
-            (e.g., matchId, tournamentId) and used when endpoints require IDs.
+            Define parameters for API comparison tests. Parameters are organized by category (use format: category:param-name).
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {/* ID list */}
-            {config.ids.length > 0 ? (
-              <div className="space-y-4">
-                {config.ids.map((id, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Card className={editingIndex === index ? "border-primary" : ""}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-medium">{id.category}</h3>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {id.values.map((value, i) => (
-                                <span key={i} className="bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded">
-                                  {value}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditId(index)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteId(index)}>
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No IDs configured yet. Add your first ID category below.
-              </div>
-            )}
+        <CardContent className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={exportParams} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export Params
+            </Button>
+          </div>
 
-            {/* Add/Edit ID form */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{editingIndex !== null ? 'Edit ID Category' : 'Add New ID Category'}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Category</label>
-                  <Input 
-                    placeholder="e.g., matchId"
-                    value={newId.category}
-                    onChange={e => setNewId({ ...newId, category: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    ID category name (e.g., matchId, tournamentId)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">ID Values</label>
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="e.g., 12345"
-                      value={newValue}
-                      onChange={e => setNewValue(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                    />
-                    <Button type="button" onClick={handleAddValue} disabled={!newValue}>
-                      Add
-                    </Button>
+          <div className="space-y-3">
+            {paramsArray.map((param, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center space-x-3 p-3 border rounded-lg"
+              >
+                <Switch
+                  checked={param.enabled}
+                  onCheckedChange={(checked) => {
+                    const updatedParams = [...paramsArray];
+                    updatedParams[index].enabled = checked;
+                    convertAndSetIds(updatedParams);
+                  }}
+                />
+                <div className="flex-1 grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Key</label>
+                    {editingIndex === index ? (
+                      <Input
+                        value={newParam.key}
+                        onChange={(e) => setNewParam({ ...newParam, key: e.target.value })}
+                        placeholder="category:param-name"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{param.key}</p>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Press Enter to add multiple values
-                  </p>
-                </div>
-
-                {/* Display current values */}
-                {newId.values.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Current Values:</label>
-                    <div className="flex flex-wrap gap-2 p-2 border rounded-md">
-                      {newId.values.map((value, index) => (
-                        <div 
-                          key={index} 
-                          className="flex items-center bg-secondary text-secondary-foreground px-2 py-1 rounded"
-                        >
-                          <span className="text-sm">{value}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-5 w-5 ml-1"
-                            onClick={() => handleDeleteValue(index)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                  <div>
+                    <label className="text-sm font-medium">Name</label>
+                    {editingIndex === index ? (
+                      <Input
+                        value={newParam.name}
+                        onChange={(e) => setNewParam({ ...newParam, name: e.target.value })}
+                        placeholder="Parameter name"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{param.name}</p>
+                    )}
                   </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                {editingIndex !== null ? (
-                  <>
-                    <Button variant="ghost" onClick={handleCancelEdit}>Cancel</Button>
-                    <Button 
-                      onClick={handleSaveEdit}
-                      disabled={!newId.category || newId.values.length === 0}
-                    >
-                      <Save className="mr-2 h-4 w-4" /> Save Changes
+                  <div>
+                    <label className="text-sm font-medium">Value</label>
+                    {editingIndex === index ? (
+                      <Input
+                        value={newParam.value}
+                        onChange={(e) => setNewParam({ ...newParam, value: e.target.value })}
+                        placeholder="Parameter value"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground truncate">{param.value}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  {editingIndex === index ? (
+                    <Button onClick={handleSaveEdit} size="sm">
+                      <Save className="w-4 h-4" />
                     </Button>
-                  </>
-                ) : (
-                  <Button 
-                    onClick={handleAddId} 
-                    className="ml-auto"
-                    disabled={!newId.category || newId.values.length === 0}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add ID Category
+                  ) : (
+                    <Button onClick={() => handleEditParam(index)} variant="outline" size="sm">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button onClick={() => handleDeleteParam(index)} variant="destructive" size="sm">
+                    <Trash className="w-4 h-4" />
                   </Button>
-                )}
-              </CardFooter>
-            </Card>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </CardContent>
+        <CardFooter>
+          <div className="flex items-center space-x-3 w-full">
+            <Switch
+              checked={newParam.enabled}
+              onCheckedChange={(checked) => setNewParam({ ...newParam, enabled: checked })}
+            />
+            <div className="flex-1 grid grid-cols-3 gap-3">
+              <Input
+                placeholder="category:param-name (e.g., matches:match1)"
+                value={newParam.key}
+                onChange={(e) => setNewParam({ ...newParam, key: e.target.value })}
+              />
+              <Input
+                placeholder="Parameter name"
+                value={newParam.name}
+                onChange={(e) => setNewParam({ ...newParam, name: e.target.value })}
+              />
+              <Input
+                placeholder="Parameter value"
+                value={newParam.value}
+                onChange={(e) => setNewParam({ ...newParam, value: e.target.value })}
+              />
+            </div>
+            <Button onClick={handleAddParam}>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Add Param
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

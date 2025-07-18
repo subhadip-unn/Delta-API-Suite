@@ -19,10 +19,22 @@ export default function HeadersTab() {
     enabled: true
   });
 
+  // Convert object-based headers to array format for display
+  const headersArray: Header[] = [];
+  Object.entries(config.headers || {}).forEach(([platform, platformHeaders]) => {
+    Object.entries(platformHeaders).forEach(([key, value]) => {
+      headersArray.push({
+        key: `${platform}:${key}`,
+        value: value as string,
+        enabled: true
+      });
+    });
+  });
+
   const handleAddHeader = () => {
     if (newHeader.key && newHeader.value) {
-      const updatedHeaders = [...config.headers, { ...newHeader }];
-      setHeaders(updatedHeaders);
+      const updatedHeaders = [...headersArray, { ...newHeader }];
+      convertAndSetHeaders(updatedHeaders);
       setNewHeader({
         key: '',
         value: '',
@@ -33,14 +45,14 @@ export default function HeadersTab() {
 
   const handleEditHeader = (index: number) => {
     setEditingIndex(index);
-    setNewHeader({ ...config.headers[index] });
+    setNewHeader({ ...headersArray[index] });
   };
 
   const handleSaveEdit = () => {
     if (editingIndex !== null && newHeader.key && newHeader.value) {
-      const updatedHeaders = [...config.headers];
+      const updatedHeaders = [...headersArray];
       updatedHeaders[editingIndex] = { ...newHeader };
-      setHeaders(updatedHeaders);
+      convertAndSetHeaders(updatedHeaders);
       setEditingIndex(null);
       setNewHeader({
         key: '',
@@ -50,189 +62,141 @@ export default function HeadersTab() {
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingIndex(null);
-    setNewHeader({
-      key: '',
-      value: '',
-      enabled: true
-    });
-  };
-
   const handleDeleteHeader = (index: number) => {
-    const updatedHeaders = config.headers.filter((_, i) => i !== index);
-    setHeaders(updatedHeaders);
+    const updatedHeaders = headersArray.filter((_, i) => i !== index);
+    convertAndSetHeaders(updatedHeaders);
   };
 
-  const toggleHeaderEnabled = (index: number) => {
-    const updatedHeaders = [...config.headers];
-    updatedHeaders[index] = { 
-      ...updatedHeaders[index], 
-      enabled: !updatedHeaders[index].enabled 
-    };
-    setHeaders(updatedHeaders);
+  const convertAndSetHeaders = (headers: Header[]) => {
+    const headersObject: { [platform: string]: { [key: string]: string } } = {};
+    headers.forEach((header) => {
+      if (header.enabled) {
+        const [platform, ...keyParts] = header.key.split(':');
+        const key = keyParts.join(':');
+        if (!headersObject[platform]) {
+          headersObject[platform] = {};
+        }
+        headersObject[platform][key] = header.value;
+      }
+    });
+    setHeaders(headersObject);
   };
 
-  // CB headers payload
-  const cbHeaders = [
-    {
-      key: "i",
-      value: '{"accept":"application/json","cb-loc":["IN","US","CA","AE"],"cb-tz":"+0530","cb-appver":"15.8","user-agent":"CricbuzzMobile/15.8 (com.sports.iCric; build:198; iOS 17.7.1) Alamofire/4.9.1"}',
-      enabled: true
-    },
-    {
-      key: "a",
-      value: '{"accept":"application/json","cb-loc":["IN","US","CA","AE"],"cb-tz":"+0530","cb-appver":"6.23.05","cb-src":"playstore","user-agent":"okhttp/4.12.0"}',
-      enabled: true
-    },
-    {
-      key: "m",
-      value: '{"accept":"application/json","content-type":"application/json","cb-loc":["IN","US","CA","AE"],"cb-tz":"+0530","user-agent":"Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36"}',
-      enabled: true
-    },
-    {
-      key: "w",
-      value: '{"accept":"application/json, text/plain, */*","cb-loc":["IN","US","CA","AE"],"cb-tz":"+0530","user-agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"}',
-      enabled: true
-    }
-  ];
-
-  const handleLoadCBHeaders = () => {
-    try {
-      setHeaders(cbHeaders);
-      toast({
-        title: "Headers Loaded",
-        description: "CB headers loaded successfully"
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error Loading Headers",
-        description: error.message || 'Failed to load headers',
-        variant: "destructive"
-      });
-    }
+  const exportHeaders = () => {
+    const dataStr = JSON.stringify(headersArray, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'headers.json';
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    toast({
+      title: "Headers Exported",
+      description: "Headers have been exported to headers.json"
+    });
   };
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <div>
-            <CardTitle>HTTP Headers</CardTitle>
-            <CardDescription>
-              Configure default HTTP headers sent with API requests.
-              Enable/disable headers as needed without removing them.
-            </CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleLoadCBHeaders} className="whitespace-nowrap flex-shrink-0">
-            <Download className="mr-2 h-4 w-4" /> Load CB Headers
-          </Button>
+        <CardHeader>
+          <CardTitle>Headers Configuration</CardTitle>
+          <CardDescription>
+            Define HTTP headers to be sent with API requests. Headers are organized by platform (use format: platform:header-name).
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {/* Header list */}
-            {config.headers.length > 0 ? (
-              <div className="space-y-4">
-                {config.headers.map((header, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Card className={`${editingIndex === index ? "border-primary" : ""} ${!header.enabled ? "opacity-60" : ""}`}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Switch 
-                                checked={header.enabled}
-                                onCheckedChange={() => toggleHeaderEnabled(index)}
-                              />
-                              <h3 className="font-medium">{header.key}</h3>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{header.value}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditHeader(index)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteHeader(index)}>
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No headers configured yet. Add your first header below.
-              </div>
-            )}
+        <CardContent className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={exportHeaders} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export Headers
+            </Button>
+          </div>
 
-            {/* Add/Edit header form */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{editingIndex !== null ? 'Edit Header' : 'Add New Header'}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Header Name</label>
-                    <Input 
-                      placeholder="e.g., Content-Type"
-                      value={newHeader.key}
-                      onChange={e => setNewHeader({ ...newHeader, key: e.target.value })}
-                    />
+          <div className="space-y-3">
+            {headersArray.map((header, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center space-x-3 p-3 border rounded-lg"
+              >
+                <Switch
+                  checked={header.enabled}
+                  onCheckedChange={(checked) => {
+                    const updatedHeaders = [...headersArray];
+                    updatedHeaders[index].enabled = checked;
+                    convertAndSetHeaders(updatedHeaders);
+                  }}
+                />
+                <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Key</label>
+                    {editingIndex === index ? (
+                      <Input
+                        value={newHeader.key}
+                        onChange={(e) => setNewHeader({ ...newHeader, key: e.target.value })}
+                        placeholder="platform:header-name"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{header.key}</p>
+                    )}
                   </div>
-                  <div className="space-y-2">
+                  <div>
                     <label className="text-sm font-medium">Value</label>
-                    <Input 
-                      placeholder="e.g., application/json"
-                      value={newHeader.value}
-                      onChange={e => setNewHeader({ ...newHeader, value: e.target.value })}
-                    />
+                    {editingIndex === index ? (
+                      <Input
+                        value={newHeader.value}
+                        onChange={(e) => setNewHeader({ ...newHeader, value: e.target.value })}
+                        placeholder="Header value"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground truncate">{header.value}</p>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="header-enabled"
-                    checked={newHeader.enabled}
-                    onCheckedChange={checked => setNewHeader({ ...newHeader, enabled: checked })}
-                  />
-                  <label htmlFor="header-enabled" className="text-sm font-medium">
-                    Enabled
-                  </label>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                {editingIndex !== null ? (
-                  <>
-                    <Button variant="ghost" onClick={handleCancelEdit}>Cancel</Button>
-                    <Button 
-                      onClick={handleSaveEdit}
-                      disabled={!newHeader.key || !newHeader.value}
-                    >
-                      <Save className="mr-2 h-4 w-4" /> Save Changes
+                <div className="flex space-x-2">
+                  {editingIndex === index ? (
+                    <Button onClick={handleSaveEdit} size="sm">
+                      <Save className="w-4 h-4" />
                     </Button>
-                  </>
-                ) : (
-                  <Button 
-                    onClick={handleAddHeader} 
-                    className="ml-auto"
-                    disabled={!newHeader.key || !newHeader.value}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Header
+                  ) : (
+                    <Button onClick={() => handleEditHeader(index)} variant="outline" size="sm">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button onClick={() => handleDeleteHeader(index)} variant="destructive" size="sm">
+                    <Trash className="w-4 h-4" />
                   </Button>
-                )}
-              </CardFooter>
-            </Card>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </CardContent>
+        <CardFooter>
+          <div className="flex items-center space-x-3 w-full">
+            <Switch
+              checked={newHeader.enabled}
+              onCheckedChange={(checked) => setNewHeader({ ...newHeader, enabled: checked })}
+            />
+            <div className="flex-1 grid grid-cols-2 gap-3">
+              <Input
+                placeholder="platform:header-name (e.g., i:User-Agent)"
+                value={newHeader.key}
+                onChange={(e) => setNewHeader({ ...newHeader, key: e.target.value })}
+              />
+              <Input
+                placeholder="Header value"
+                value={newHeader.value}
+                onChange={(e) => setNewHeader({ ...newHeader, value: e.target.value })}
+              />
+            </div>
+            <Button onClick={handleAddHeader}>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Add Header
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

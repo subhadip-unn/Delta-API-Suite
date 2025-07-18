@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Config from './pages/Config';
 import Reports from './pages/Reports';
 import Report from './pages/Report';
+import JsonDiffTool from './pages/JsonDiffTool';
 import Login from './pages/Login';
 import './global.css';
 
@@ -26,6 +27,7 @@ function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/report/:reportId" element={<Report />} />
             <Route path="/upload" element={<div>Upload Report Page</div>} />
+            <Route path="/json-diff" element={<JsonDiffTool />} />
           </Route>
         </Route>
         
