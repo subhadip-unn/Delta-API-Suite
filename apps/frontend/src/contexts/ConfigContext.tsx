@@ -66,8 +66,8 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ...sampleConfig,
       endpoints: [...sampleConfig.endpoints],
       jobs: [...sampleConfig.jobs],
-      headers: [...sampleConfig.headers],
-      ids: [...sampleConfig.ids]
+      headers: { ...sampleConfig.headers },  // Object, not array
+      ids: { ...sampleConfig.ids }           // Object, not array
     };
     
     // Force immediate update and save
