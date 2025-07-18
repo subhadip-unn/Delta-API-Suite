@@ -268,17 +268,43 @@ async function runJob(jobConfig, headers, ids, endpoints) {
             // Calculate differences
             let diffs = [];
             let diffCounts = { added: 0, deleted: 0, changed: 0, array: 0, total: 0 };
+            let diffSummary = null;
+            let classifiedDiffs = [];
             
             // Only calculate diffs if both responses were successful
             if (responseA.success && responseB.success) {
               try {
-                diffs = DeepDiff(responseA.data, responseB.data) || [];
-                // Filter diffs using ignorePaths
-                diffs = filterDiffs(diffs, ignorePaths);
-                // Classify and count diffs by type
-                diffCounts = classifyDiffs(diffs);
+                // Use smart array-aware diff analysis instead of basic deep-diff
+                const diffAnalysis = classifyDiffs(responseA.data, responseB.data);
+                classifiedDiffs = diffAnalysis.diffs;
+                diffCounts = diffAnalysis.counts;
+                diffSummary = diffAnalysis.summary;
+                
+                // Filter diffs using ignorePaths if needed
+                if (ignorePaths && ignorePaths.length > 0) {
+                  classifiedDiffs = filterDiffs(classifiedDiffs, ignorePaths);
+                  // Recalculate counts after filtering
+                  diffCounts = { added: 0, deleted: 0, changed: 0, array: 0, total: 0 };
+                  classifiedDiffs.forEach(diff => {
+                    switch (diff.kind) {
+                      case 'N': diffCounts.added++; break;
+                      case 'D': diffCounts.deleted++; break;
+                      case 'E': diffCounts.changed++; break;
+                      case 'A': diffCounts.array++; break;
+                    }
+                  });
+                  diffCounts.total = diffCounts.added + diffCounts.deleted + diffCounts.changed + diffCounts.array;
+                }
+                
+                // Keep the original diffs for backward compatibility
+                diffs = classifiedDiffs;
+                
+                console.log(`Smart diff analysis for ${epA.key}: ${classifiedDiffs.length} meaningful diffs found`);
+                if (classifiedDiffs.length > 0) {
+                  console.log(`Diff summary: ${diffCounts.added} added, ${diffCounts.deleted} deleted, ${diffCounts.changed} changed, ${diffCounts.array} array changes`);
+                }
               } catch (diffErr) {
-                console.error(`Error calculating diffs: ${diffErr.message}`);
+                console.error(`Error calculating smart diffs: ${diffErr.message}`);
               }
             }
             
@@ -307,8 +333,12 @@ async function runJob(jobConfig, headers, ids, endpoints) {
                 error: responseB.error,
                 timeMs: responseB.responseTimeMs
               },
-              diffs,
+              diffs: classifiedDiffs, // Enhanced diffs with severity/priority
               diffCounts,
+              diffSummary, // Advanced diff analysis summary
+              rawDiffs: diffs, // Original diffs for debugging
+              rawJsonA: responseA.success ? responseA.data : null, // Raw JSON data for Monaco Diff Viewer
+              rawJsonB: responseB.success ? responseB.data : null, // Raw JSON data for Monaco Diff Viewer
               ignorePaths
             };
             
@@ -345,8 +375,9 @@ async function runJob(jobConfig, headers, ids, endpoints) {
   
   // Map records to endpoints in the expected format
   const endpointMappings = allRecords.map(record => ({
-    id: `${record.endpointA || ''}_VS_${record.endpointB || ''}`,
-    name: `${record.endpointA || 'unknown'} vs ${record.endpointB || 'unknown'}`,
+      id: `${record.endpointA || ''}_VS_${record.endpointB || ''}`,
+      key: record.endpointA || 'unknown', // Add key field for frontend
+      name: `${record.endpointA || 'unknown'} vs ${record.endpointB || 'unknown'}`,
     urlA: record.urlA,
     urlB: record.urlB,
     responseA: record.responseA,
@@ -356,10 +387,13 @@ async function runJob(jobConfig, headers, ids, endpoints) {
     error: record.error,
     platform: record.platform,
     geo: record.geo,
-    idValue: record.id,
-    idName: record.idName,
-    params: {}
-  }));
+      cbLoc: record.geo || 'IN', // Add cbLoc field
+      idValue: record.id,
+      idName: record.idName,
+      params: {},
+      rawJsonA: record.rawJsonA || null,
+      rawJsonB: record.rawJsonB || null
+    }));
 
   // Return all records for this job with proper structure
   return {
@@ -515,8 +549,8 @@ async function runAllJobs(configState, qaName) {
         acc.push(...job.endpoints.map(endpoint => ({
           ...endpoint,
           cbLoc: endpoint.geo || 'IN',
-          rawJsonA: endpoint.responseA?.data || null,
-          rawJsonB: endpoint.responseB?.data || null
+          rawJsonA: endpoint.rawJsonA || null,
+          rawJsonB: endpoint.rawJsonB || null
         })));
       }
       return acc;
