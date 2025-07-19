@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Config from './pages/Config';
 import Reports from './pages/Reports';
 import Report from './pages/Report';
-import JsonDiffTool from './pages/JsonDiffTool';
+import JsonDiffTool from './pages/JsonDiffTool.tsx';
 import Login from './pages/Login';
 import './global.css';
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -99,9 +99,10 @@ export default function JsonDiffViewer({
   rightTitle
 }: JsonDiffViewerProps) {
   const [activeTab, setActiveTab] = useState('diff');
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
-  const { toast } = useToast();
+  const [expandedDiffs, setExpandedDiffs] = useState<Set<number>>(new Set());
+  const editorRef = useRef<any>(null);
+
 
   // Format JSON for display
   const formatJson = (data: any) => {
@@ -111,6 +112,31 @@ export default function JsonDiffViewer({
       return 'Invalid JSON';
     }
   };
+
+  // Memoize formatted JSON to prevent unnecessary re-renders
+  const formattedLeftData = useMemo(() => formatJson(leftData), [leftData]);
+  const formattedRightData = useMemo(() => formatJson(rightData), [rightData]);
+
+  // Cleanup Monaco Editor on unmount
+  useEffect(() => {
+    return () => {
+      if (editorRef.current) {
+        try {
+          editorRef.current.dispose();
+        } catch (error) {
+          // Ignore disposal errors during cleanup
+          console.warn('Monaco Editor cleanup warning:', error);
+        }
+      }
+    };
+  }, []);
+
+  // Handle editor mount
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor;
+  };
+
+  const { toast } = useToast();
 
   // Copy to clipboard
   const copyToClipboard = (text: string, label: string) => {
@@ -137,19 +163,21 @@ export default function JsonDiffViewer({
   };
 
   // Toggle expanded state
-  const toggleExpanded = (path: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(path)) {
-      newExpanded.delete(path);
-    } else {
-      newExpanded.add(path);
-    }
-    setExpandedItems(newExpanded);
+  const toggleExpanded = (index: number) => {
+    setExpandedDiffs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
   };
 
   // Render diff tree item
   const renderDiffItem = (diff: DiffItem, index: number) => {
-    const isExpanded = expandedItems.has(diff.path);
+    const isExpanded = expandedDiffs.has(index);
     
     return (
       <motion.div
@@ -164,7 +192,7 @@ export default function JsonDiffViewer({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toggleExpanded(diff.path)}
+              onClick={() => toggleExpanded(index)}
               className="h-6 w-6 p-0"
             >
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -262,9 +290,10 @@ export default function JsonDiffViewer({
               <DiffEditor
                 height="600px"
                 language="json"
-                original={formatJson(leftData)}
-                modified={formatJson(rightData)}
+                original={formattedLeftData}
+                modified={formattedRightData}
                 theme={isDarkMode() ? 'vs-dark' : 'vs'}
+                onMount={handleEditorDidMount}
                 options={{
                   readOnly: true,
                   minimap: { enabled: true },
@@ -273,7 +302,8 @@ export default function JsonDiffViewer({
                   renderSideBySide: true,
                   ignoreTrimWhitespace: false,
                   renderWhitespace: 'boundary',
-                  diffWordWrap: 'on'
+                  diffWordWrap: 'on',
+                  automaticLayout: true
                 }}
               />
             </div>
@@ -301,7 +331,7 @@ export default function JsonDiffViewer({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setExpandedItems(new Set(comparisonResult.differences.map(d => d.path)))}
+                    onClick={() => setExpandedDiffs(new Set(comparisonResult.differences.map((_, i) => i)))}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Expand All

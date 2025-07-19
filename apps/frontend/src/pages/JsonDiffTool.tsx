@@ -233,6 +233,65 @@ export default function JsonDiffTool() {
     }
   }, [toast]);
 
+  // Deep equality check for objects and arrays
+  const deepEqual = (obj1: any, obj2: any): boolean => {
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null) return false;
+    if (typeof obj1 !== typeof obj2) return false;
+    
+    if (Array.isArray(obj1) && Array.isArray(obj2)) {
+      if (obj1.length !== obj2.length) return false;
+      // For arrays, check if all elements exist in both (order-insensitive)
+      const sorted1 = [...obj1].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+      const sorted2 = [...obj2].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+      return sorted1.every((item, index) => deepEqual(item, sorted2[index]));
+    }
+    
+    if (typeof obj1 === 'object') {
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
+      if (keys1.length !== keys2.length) return false;
+      return keys1.every(key => keys2.includes(key) && deepEqual(obj1[key], obj2[key]));
+    }
+    
+    return false;
+  };
+
+  // Calculate similarity score between two objects (0-1 scale)
+  const calculateSimilarity = (obj1: any, obj2: any): number => {
+    if (obj1 === obj2) return 1;
+    if (typeof obj1 !== typeof obj2) return 0;
+    
+    if (typeof obj1 === 'object' && obj1 !== null && obj2 !== null) {
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
+      const allKeys = new Set([...keys1, ...keys2]);
+      
+      if (allKeys.size === 0) return 1;
+      
+      let matchingKeys = 0;
+      let totalSimilarity = 0;
+      
+      for (const key of allKeys) {
+        if (key in obj1 && key in obj2) {
+          matchingKeys++;
+          // Special handling for ID fields - if IDs match, high similarity
+          if (key.toLowerCase().includes('id') && obj1[key] === obj2[key]) {
+            totalSimilarity += 0.8; // High weight for matching IDs
+          } else {
+            totalSimilarity += calculateSimilarity(obj1[key], obj2[key]) * 0.5;
+          }
+        }
+      }
+      
+      // Bonus for having same keys
+      const keyOverlap = matchingKeys / allKeys.size;
+      return Math.min(1, (totalSimilarity + keyOverlap) / 2);
+    }
+    
+    return obj1 === obj2 ? 1 : 0;
+  };
+
   // Helper function to determine severity based on path and type
   const getSeverity = (path: string, type: string): 'low' | 'medium' | 'high' | 'critical' => {
     // Critical: Core API fields, IDs, status codes
@@ -270,37 +329,102 @@ export default function JsonDiffTool() {
       }
 
       if (Array.isArray(a) && Array.isArray(b)) {
-        // Smart array comparison - order insensitive for objects
-        const aSet = new Set(a.map(item => JSON.stringify(item)));
-        const bSet = new Set(b.map(item => JSON.stringify(item)));
-        
-        for (const item of aSet) {
-          if (!bSet.has(item)) {
+        // Intelligent order-insensitive array comparison
+        const smartArrayCompare = (arr1: any[], arr2: any[]) => {
+          const matched = new Set<number>();
+          const unmatched1: any[] = [];
+          const unmatched2: any[] = [];
+          
+          // First pass: exact matches (including order-insensitive object matching)
+          for (let i = 0; i < arr1.length; i++) {
+            let found = false;
+            for (let j = 0; j < arr2.length; j++) {
+              if (matched.has(j)) continue;
+              
+              if (deepEqual(arr1[i], arr2[j])) {
+                matched.add(j);
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              unmatched1.push({ item: arr1[i], index: i });
+            }
+          }
+          
+          // Collect unmatched items from second array
+          for (let j = 0; j < arr2.length; j++) {
+            if (!matched.has(j)) {
+              unmatched2.push({ item: arr2[j], index: j });
+            }
+          }
+          
+          // Second pass: intelligent partial matching for objects
+          const stillUnmatched1: any[] = [];
+          const stillUnmatched2: any[] = [];
+          const partialMatched = new Set<number>();
+          
+          for (const um1 of unmatched1) {
+            let bestMatch = null;
+            let bestScore = 0;
+            let bestIndex = -1;
+            
+            for (let k = 0; k < unmatched2.length; k++) {
+              if (partialMatched.has(k)) continue;
+              
+              const um2 = unmatched2[k];
+              const score = calculateSimilarity(um1.item, um2.item);
+              
+              if (score > 0.7 && score > bestScore) { // 70% similarity threshold
+                bestMatch = um2;
+                bestScore = score;
+                bestIndex = k;
+              }
+            }
+            
+            if (bestMatch && bestScore > 0.7) {
+              partialMatched.add(bestIndex);
+              // Compare the similar objects to find specific differences
+              compare(um1.item, bestMatch.item, `${path}[${um1.index}]`);
+            } else {
+              stillUnmatched1.push(um1);
+            }
+          }
+          
+          // Collect still unmatched from second array
+          for (let k = 0; k < unmatched2.length; k++) {
+            if (!partialMatched.has(k)) {
+              stillUnmatched2.push(unmatched2[k]);
+            }
+          }
+          
+          // Report truly missing/extra items
+          for (const um1 of stillUnmatched1) {
             const severity = getSeverity(path, 'missing');
             differences.push({
-              path: `${path}[${a.indexOf(JSON.parse(item))}]`,
+              path: `${path}[${um1.index}]`,
               type: 'missing',
               severity,
-              oldValue: JSON.parse(item),
+              oldValue: um1.item,
               newValue: undefined,
-              description: `Array item missing in right object`
+              description: `Array item not found in right object (no similar match)`
             });
           }
-        }
-        
-        for (const item of bSet) {
-          if (!aSet.has(item)) {
+          
+          for (const um2 of stillUnmatched2) {
             const severity = getSeverity(path, 'extra');
             differences.push({
-              path: `${path}[${b.indexOf(JSON.parse(item))}]`,
+              path: `${path}[${um2.index}]`,
               type: 'extra',
               severity,
               oldValue: undefined,
-              newValue: JSON.parse(item),
-              description: `Extra array item in right object`
+              newValue: um2.item,
+              description: `Extra array item in right object (no similar match)`
             });
           }
-        }
+        };
+        
+        smartArrayCompare(a, b);
         return;
       }
 
@@ -445,11 +569,11 @@ export default function JsonDiffTool() {
               <GitCompare className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              JSON Diff Tool
+              DeltaPro+
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Professional API comparison tool with advanced semantic analysis, order-insensitive matching, and intelligent diff visualization.
+            Professional API comparison tool with advanced semantic analysis, intelligent order-insensitive matching, and world-class diff visualization.
           </p>
           
           <div className="flex items-center justify-center space-x-4">
@@ -465,6 +589,52 @@ export default function JsonDiffTool() {
               <RefreshCw className="w-3 h-3 mr-1" />
               No Storage
             </Badge>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center justify-center space-x-3 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Clear all configurations
+                localStorage.removeItem(STORAGE_KEY);
+                setLeftEndpoint({
+                  id: 'left',
+                  name: 'API Endpoint A',
+                  baseUrl: '',
+                  endpoint: '',
+                  headers: {},
+                  loading: false
+                });
+                setRightEndpoint({
+                  id: 'right',
+                  name: 'API Endpoint B',
+                  baseUrl: '',
+                  endpoint: '',
+                  headers: {},
+                  loading: false
+                });
+                setComparisonResult(null);
+                toast({
+                  title: "🧹 Configurations Cleared",
+                  description: "All endpoint configurations have been reset",
+                });
+              }}
+              className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear All Configs
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowInstructions(!showInstructions)}
+            >
+              {showInstructions ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+              {showInstructions ? 'Hide Guide' : 'Show Guide'}
+            </Button>
           </div>
         </motion.div>
 
