@@ -6,6 +6,7 @@ type AuthContextType = {
   qaName: string;
   userRole: UserRole;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (name: string, role: UserRole) => void;
   logout: () => void;
 };
@@ -16,6 +17,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [qaName, setQaName] = useState<string>('');
   const [userRole, setUserRole] = useState<UserRole>('QA Engineer');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // On mount, check if user is already authenticated via localStorage
   useEffect(() => {
@@ -26,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserRole(storedRole || 'QA Engineer');
       setIsAuthenticated(true);
     }
+    setIsLoading(false); // Authentication check complete
   }, []);
 
   const login = (name: string, role: UserRole) => {
@@ -47,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ qaName, userRole, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ qaName, userRole, isAuthenticated, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

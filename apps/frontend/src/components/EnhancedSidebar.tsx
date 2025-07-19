@@ -5,16 +5,25 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
-  LayoutDashboard, 
-  Settings, 
-  BarChart, 
-  Upload, 
+  Home,
+  Settings,
+  FileText,
+  Upload,
+  GitCompare,
+  Moon,
+  Sun,
   ChevronLeft,
   ChevronRight,
-  Sun,
-  Moon,
-  Zap
+  Zap,
+  Activity,
+  LogOut,
+  UserCog,
+  HelpCircle
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DocumentationModal } from '@/components/modals/DocumentationModal';
+import { SettingsModal } from '@/components/modals/SettingsModal';
+import { ActivityLogModal } from '@/components/modals/ActivityLogModal';
 
 interface EnhancedSidebarProps {
   isOpen: boolean;
@@ -27,6 +36,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
+  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Check localStorage first, then fallback to system preference
     const stored = localStorage.getItem('darkMode');
@@ -36,19 +46,14 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
     // Fallback to system preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
-  const { qaName, userRole } = useAuth();
+  
+  // Modal states
+  const [showDocumentation, setShowDocumentation] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showActivityLog, setShowActivityLog] = useState(false);
+  const { qaName, userRole, logout } = useAuth();
   const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
-
-  // Get the initials from the QA name for the avatar
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
 
   // Initialize dark mode on component mount
   useEffect(() => {
@@ -79,10 +84,11 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
   const handleCollapseToggle = () => {
     const newCollapsed = !isCollapsed;
     setIsCollapsed(newCollapsed);
+    setIsManuallyCollapsed(newCollapsed); // Track manual state
     onCollapseChange?.(newCollapsed);
   };
 
-  // Smart sidebar auto-hide on scroll (fixed to work with proper positioning)
+  // Improved auto-hide: only auto-collapse, never auto-expand unless user explicitly opens
   useEffect(() => {
     let lastScrollY = window.scrollY;
     let ticking = false;
@@ -90,26 +96,21 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
     const updateScrollDirection = () => {
       const scrollY = window.scrollY;
       
-      if (Math.abs(scrollY - lastScrollY) < 10) {
+      if (Math.abs(scrollY - lastScrollY) < 15) {
         ticking = false;
         return;
       }
 
-      // Auto-collapse on scroll down, expand on scroll up (only on desktop)
-      if (window.innerWidth >= 1024) {
-        if (scrollY > lastScrollY && scrollY > 150) {
-          // Scrolling down - auto-collapse if not hovered
+      // Only auto-collapse on scroll down, never auto-expand
+      if (window.innerWidth >= 1024 && !isManuallyCollapsed) {
+        if (scrollY > lastScrollY && scrollY > 200) {
+          // Scrolling down - auto-collapse if not hovered and not manually controlled
           if (!isCollapsed && !isHovered) {
             setIsCollapsed(true);
             onCollapseChange?.(true);
           }
-        } else if (scrollY < lastScrollY - 50) {
-          // Scrolling up - auto-expand if collapsed
-          if (isCollapsed && !isHovered) {
-            setIsCollapsed(false);
-            onCollapseChange?.(false);
-          }
         }
+        // Removed auto-expand on scroll up - user must manually open
       }
 
       lastScrollY = scrollY;
@@ -125,40 +126,26 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
 
     window.addEventListener('scroll', requestTick, { passive: true });
     return () => window.removeEventListener('scroll', requestTick);
-  }, [isCollapsed, isHovered, onCollapseChange]);
+  }, [isCollapsed, isHovered, isManuallyCollapsed, onCollapseChange]);
 
   // Navigation items
   const navigationItems = [
-    {
-      to: '/dashboard',
-      icon: LayoutDashboard,
-      label: 'Dashboard',
-      description: 'Overview & Analytics'
+    { icon: Home, label: 'Dashboard', to: '/dashboard', description: 'Overview and metrics' },
+    { icon: Settings, label: 'Config', to: '/config', description: 'API configuration' },
+    { icon: FileText, label: 'Reports', to: '/reports', description: 'Test results' },
+    { icon: Upload, label: 'Upload Report', to: '/upload', description: 'Import test data' },
+    { 
+      icon: () => (
+        <div className="relative">
+          <GitCompare className="h-5 w-5" />
+          <Zap className="absolute -top-1 -right-1 h-3 w-3 text-yellow-500 animate-pulse" />
+        </div>
+      ), 
+      label: 'DeltaPro+', 
+      to: '/json-diff', 
+      description: 'Advanced JSON comparison' 
     },
-    {
-      to: '/config',
-      icon: Settings,
-      label: 'Config',
-      description: 'API Configuration'
-    },
-    {
-      to: '/reports',
-      icon: BarChart,
-      label: 'Reports',
-      description: 'Test Results'
-    },
-    {
-      to: '/upload',
-      icon: Upload,
-      label: 'Upload Report',
-      description: 'Import Test Data'
-    },
-    {
-      to: '/json-diff',
-      icon: Zap,
-      label: 'DeltaPro+',
-      description: 'JSON Diff Tool'
-    }
+    { icon: HelpCircle, label: 'Documentation', to: '/docs', description: 'Help and guides' },
   ];
 
   const effectiveWidth = isCollapsed && !isHovered ? 'w-16' : 'w-64';
@@ -174,6 +161,20 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
         />
       )}
 
+      {/* Professional Modals */}
+      <DocumentationModal 
+        open={showDocumentation} 
+        onOpenChange={setShowDocumentation} 
+      />
+      <SettingsModal 
+        open={showSettings} 
+        onOpenChange={setShowSettings} 
+      />
+      <ActivityLogModal 
+        open={showActivityLog} 
+        onOpenChange={setShowActivityLog} 
+      />
+
       {/* Sidebar */}
       <div
         ref={sidebarRef}
@@ -188,14 +189,17 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
           className
         )}
         onMouseEnter={() => {
-          // Clear any existing timeout
-          if (hoverTimeout) {
-            clearTimeout(hoverTimeout);
-            setHoverTimeout(null);
+          // Only expand on hover if not manually collapsed
+          if (!isManuallyCollapsed) {
+            // Clear any existing timeout
+            if (hoverTimeout) {
+              clearTimeout(hoverTimeout);
+              setHoverTimeout(null);
+            }
+            // Set hover state with delay for better UX
+            const timeout = setTimeout(() => setIsHovered(true), 150);
+            setHoverTimeout(timeout);
           }
-          // Set hover state with slight delay for better UX
-          const timeout = setTimeout(() => setIsHovered(true), 100);
-          setHoverTimeout(timeout);
         }}
         onMouseLeave={() => {
           // Clear timeout and reset hover state
@@ -261,135 +265,200 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
               const isActive = location.pathname === item.to;
               
               return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "group/nav flex items-center rounded-lg text-sm font-medium transition-all duration-200 relative",
-                    "hover:bg-accent/50 hover:shadow-sm",
-                    showLabels ? "px-3 py-2.5" : "px-2 py-2.5 justify-center",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
-                  )}
-                  onClick={() => {
-                    // If sidebar is collapsed and not hovered, allow direct navigation
-                    if (isCollapsed && !isHovered) {
-                      // Let the navigation happen naturally
-                      // Close mobile sidebar on navigation
+                item.to === '/docs' ? (
+                  <Button
+                    key={item.to}
+                    variant="ghost"
+                    className={cn(
+                      "group/nav flex items-center rounded-lg text-sm font-medium transition-all duration-200 relative w-full",
+                      "hover:bg-accent/50 hover:shadow-sm",
+                      showLabels ? "px-3 py-2.5 justify-start" : "px-2 py-2.5 justify-center",
+                      "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+                    )}
+                    onClick={() => {
+                      setShowDocumentation(true);
+                      // If sidebar is collapsed and not hovered, allow direct action
+                      if (isCollapsed && !isHovered) {
+                        // Modal will open
+                      }
+                    }}
+                  >
+                    <div className="flex items-center w-full">
+                      <div className="flex items-center justify-center w-5 h-5 mr-3 shrink-0">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      {showLabels && (
+                        <div className="flex-1 text-left">
+                          <div className="font-medium">{item.label}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Animated Tooltip for collapsed state */}
+                    {!showLabels && (
+                      <div className={cn(
+                        "absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-md shadow-lg border transition-all duration-300 pointer-events-none whitespace-nowrap z-50",
+                        "opacity-0 scale-95 translate-x-2 group-hover/nav:opacity-100 group-hover/nav:scale-100 group-hover/nav:translate-x-0",
+                        "before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-4 before:border-transparent before:border-r-popover"
+                      )}>
+                        <div className="font-medium">{item.label}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
+                      </div>
+                    )}
+                  </Button>
+                ) : (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "group/nav flex items-center rounded-lg text-sm font-medium transition-all duration-200 relative",
+                      "hover:bg-accent/50 hover:shadow-sm",
+                      showLabels ? "px-3 py-2.5" : "px-2 py-2.5 justify-center",
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+                    )}
+                    onClick={() => {
+                      // If sidebar is collapsed and not hovered, allow direct navigation
+                      if (isCollapsed && !isHovered) {
+                        // Let the navigation happen naturally
+                        // Close mobile sidebar on navigation
+                        if (window.innerWidth < 1024) {
+                          onToggle();
+                        }
+                        return;
+                      }
+                      
+                      // Normal behavior for expanded sidebar
                       if (window.innerWidth < 1024) {
                         onToggle();
                       }
-                      return;
-                    }
+                    }}
+                  >
+                    {/* Active indicator */}
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-foreground rounded-r-full" />
+                    )}
                     
-                    // Normal behavior for expanded sidebar
-                    if (window.innerWidth < 1024) {
-                      onToggle();
-                    }
-                  }}
-                >
-                  {/* Active indicator */}
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-foreground rounded-r-full" />
-                  )}
-                  
-                  <Icon className={cn(
-                    "h-5 w-5 transition-all duration-200",
-                    showLabels ? "mr-3" : "mr-0",
-                    isActive 
-                      ? "text-primary-foreground" 
-                      : "text-muted-foreground group-hover/nav:text-foreground"
-                  )} />
-                  
-                  {showLabels && (
-                    <div className="flex flex-col">
-                      <span className="leading-none">{item.label}</span>
-                      <span className={cn(
-                        "text-xs transition-colors duration-200",
-                        isActive ? "text-primary-foreground/70" : "text-muted-foreground/70"
-                      )}>
-                        {item.description}
-                      </span>
-                    </div>
-                  )}
+                    <Icon className={cn(
+                      "h-5 w-5 transition-all duration-200",
+                      showLabels ? "mr-3" : "mr-0",
+                      isActive 
+                        ? "text-primary-foreground" 
+                        : "text-muted-foreground group-hover/nav:text-foreground"
+                    )} />
+                    
+                    {showLabels && (
+                      <div className="flex flex-col">
+                        <span className="leading-none">{item.label}</span>
+                        <span className={cn(
+                          "text-xs transition-colors duration-200",
+                          isActive ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                        )}>
+                          {item.description}
+                        </span>
+                      </div>
+                    )}
 
-                  {/* Professional Tooltip for collapsed state */}
-                  {!showLabels && (
-                    <div className={cn(
-                      "absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-md shadow-lg border opacity-0 group-hover/nav:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50",
-                      "before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-4 before:border-transparent before:border-r-popover"
-                    )}>
-                      <div className="font-medium">{item.label}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
-                    </div>
-                  )}
-                </NavLink>
+                    {/* Animated Tooltip for collapsed state */}
+                    {!showLabels && (
+                      <div className={cn(
+                        "absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-md shadow-lg border transition-all duration-300 pointer-events-none whitespace-nowrap z-50",
+                        "opacity-0 scale-95 translate-x-2 group-hover/nav:opacity-100 group-hover/nav:scale-100 group-hover/nav:translate-x-0",
+                        "before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-4 before:border-transparent before:border-r-popover"
+                      )}>
+                        <div className="font-medium">{item.label}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{item.description}</div>
+                      </div>
+                    )}
+                  </NavLink>
+                )
               );
             })}
           </nav>
 
-          {/* Bottom Section */}
-          <div className="p-3 border-t border-border/50 space-y-3 overflow-hidden">
-            {/* Dark Mode Toggle */}
+          {/* Profile and Dark Mode Section - Always at bottom */}
+          <div className="mt-auto border-t border-border/50 p-4 space-y-3">
+            {/* QA Profile with Dropdown */}
             <div className={cn(
-              "flex items-center transition-all duration-200 relative group/theme",
-              showLabels ? "justify-between" : "justify-center"
-            )}>
-              {showLabels && (
-                <div className="flex items-center space-x-2">
-                  {isDarkMode ? (
-                    <Moon className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Sun className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className="text-sm font-medium">
-                    {isDarkMode ? 'Dark Mode' : 'Light Mode'}
-                  </span>
-                </div>
-              )}
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleDarkMode}
-                className="h-8 w-8 hover:bg-accent/50 transition-colors duration-200"
-              >
-                {isDarkMode ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
-              </Button>
-              
-              {/* Tooltip for collapsed state */}
-              {!showLabels && (
-                <div className={cn(
-                  "absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-lg border opacity-0 group-hover/theme:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50",
-                  "before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-4 before:border-transparent before:border-r-popover"
-                )}>
-                  {isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                </div>
-              )}
-            </div>
-
-            {/* QA Profile */}
-            <div className={cn(
-              "flex items-center transition-all duration-200 p-2 rounded-lg bg-accent/30",
+              "flex items-center transition-all duration-300",
               showLabels ? "space-x-3" : "justify-center"
             )}>
-              <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-semibold">
-                  {getInitials(qaName)}
-                </AvatarFallback>
-              </Avatar>
-              
-              {showLabels && (
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-sm font-medium truncate">{qaName}</span>
-                  <span className="text-xs text-muted-foreground truncate">{userRole}</span>
-                </div>
-              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "h-auto p-2 hover:bg-accent/50 transition-colors duration-200",
+                      showLabels ? "w-full justify-start" : "w-8 h-8"
+                    )}
+                    onMouseEnter={() => {
+                      // Prevent sidebar auto-collapse when profile is hovered
+                      setIsHovered(true);
+                    }}
+                  >
+                    <div className={cn(
+                      "flex items-center",
+                      showLabels ? "space-x-3 w-full" : "justify-center"
+                    )}>
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
+                          {qaName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {showLabels && (
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-sm font-medium text-foreground truncate">{qaName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{userRole}</p>
+                        </div>
+                      )}
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align={showLabels ? "end" : "start"} 
+                  side={showLabels ? "top" : "right"}
+                  className="w-56 mb-2"
+                  sideOffset={8}
+                  alignOffset={0}
+                >
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{qaName}</p>
+                    <p className="text-xs text-muted-foreground">{userRole}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onClick={() => setShowSettings(true)}
+                  >
+                    <UserCog className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onClick={() => setShowActivityLog(true)}
+                  >
+                    <Activity className="mr-2 h-4 w-4" />
+                    Activity Log
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={toggleDarkMode}
+                    className="cursor-pointer"
+                  >
+                    {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                    {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={logout}
+                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
