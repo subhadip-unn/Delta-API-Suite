@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronLeft, Download, Loader2, AlertCircle, BarChart, CheckCircle, AlertTriangle, XCircle, Search } from 'lucide-react';
 import { apiService } from '../services/api';
-import DiffViewer from '../components/report/DiffViewer';
+import UniversalMonacoDiffViewer from '../components/shared/UniversalMonacoDiffViewer';
 import type { Report as ReportType, ReportJobDetail, ReportEndpoint, FilterType } from '../components/report/types';
 
 const Report = () => {
@@ -12,8 +12,7 @@ const Report = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-  const [selectedEndpoint, setSelectedEndpoint] = useState<ReportEndpoint | null>(null);
-  const [showDiffViewer, setShowDiffViewer] = useState(false);
+
 
   useEffect(() => {
     if (reportId) {
@@ -119,10 +118,7 @@ const Report = () => {
     linkElement.click();
   };
 
-  const handleViewDiff = (endpoint: ReportEndpoint) => {
-    setSelectedEndpoint(endpoint);
-    setShowDiffViewer(true);
-  };
+
 
   if (loading) {
     return (
@@ -393,12 +389,21 @@ const Report = () => {
                   </div>
                   
                   <div className="ml-4 flex-shrink-0">
-                    <button
-                      onClick={() => handleViewDiff(endpoint)}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100"
-                    >
-                      Professional Diff
-                    </button>
+                    <UniversalMonacoDiffViewer
+                      leftData={endpoint.rawJsonA}
+                      rightData={endpoint.rawJsonB}
+                      leftTitle="Production (A)"
+                      rightTitle="Staging (B)"
+                      modalMode={true}
+                      platform={report?.jobs?.find(j => j.endpoints?.includes(endpoint))?.platform || 'Unknown'}
+                      geo={endpoint.cbLoc || 'Unknown'}
+                      endpoint={endpoint.key}
+                      modalTrigger={
+                        <button className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100">
+                          Professional Diff
+                        </button>
+                      }
+                    />
                   </div>
                 </div>
               </div>
@@ -420,28 +425,7 @@ const Report = () => {
         </div>
       </div>
 
-      {/* Diff Viewer Modal */}
-      {showDiffViewer && selectedEndpoint && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-6xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-medium">Diff Viewer - {selectedEndpoint.key}</h3>
-              <button
-                onClick={() => {
-                  setShowDiffViewer(false);
-                  setSelectedEndpoint(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XCircle className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-4 overflow-auto max-h-[80vh]">
-              <DiffViewer diffs={selectedEndpoint.diffs || []} />
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import JsonDiffViewer from '@/components/tools/JsonDiffViewer';
+import UniversalMonacoDiffViewer from '@/components/shared/UniversalMonacoDiffViewer';
 import {
   Loader2,
   Play,
@@ -769,12 +769,13 @@ export default function JsonDiffTool() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <JsonDiffViewer
+            <UniversalMonacoDiffViewer
               leftData={leftEndpoint.response}
               rightData={rightEndpoint.response}
               comparisonResult={comparisonResult}
               leftTitle={leftEndpoint.name}
               rightTitle={rightEndpoint.name}
+              modalMode={false}
             />
           </motion.div>
         )}
