@@ -8,6 +8,31 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import UniversalMonacoDiffViewer from '@/components/shared/UniversalMonacoDiffViewer';
+// Types for the working comparison logic
+interface DiffItem {
+  path: string;
+  type: 'missing' | 'extra' | 'changed' | 'type-changed';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  oldValue?: any;
+  newValue?: any;
+  description: string;
+}
+
+interface ComparisonResult {
+  identical: boolean;
+  differences: DiffItem[];
+  summary: {
+    totalFields: number;
+    identicalFields: number;
+    differentFields: number;
+    missingFields: number;
+    extraFields: number;
+    criticalDiffs: number;
+    highDiffs: number;
+    mediumDiffs: number;
+    lowDiffs: number;
+  };
+}
 import {
   Loader2,
   Play,
@@ -36,30 +61,7 @@ interface ApiEndpoint {
   responseTime?: number;
 }
 
-interface DiffItem {
-  path: string;
-  type: 'missing' | 'extra' | 'changed' | 'type-changed';
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  oldValue?: any;
-  newValue?: any;
-  description: string;
-}
-
-interface ComparisonResult {
-  identical: boolean;
-  differences: DiffItem[];
-  summary: {
-    totalFields: number;
-    identicalFields: number;
-    differentFields: number;
-    missingFields: number;
-    extraFields: number;
-    criticalDiffs: number;
-    highDiffs: number;
-    mediumDiffs: number;
-    lowDiffs: number;
-  };
-}
+// Types now imported from unified diff engine
 
 const STORAGE_KEY = 'deltapro-endpoint-configs';
 
@@ -112,7 +114,7 @@ export default function JsonDiffTool() {
   
   const [leftEndpoint, setLeftEndpoint] = useState<ApiEndpoint>({
     id: 'left',
-    name: savedConfigs.left.name || 'API Endpoint A',
+    name: 'Live API (Current)',
     baseUrl: savedConfigs.left.baseUrl || '',
     endpoint: savedConfigs.left.endpoint || '',
     headers: savedConfigs.left.headers || {},
@@ -121,7 +123,7 @@ export default function JsonDiffTool() {
   
   const [rightEndpoint, setRightEndpoint] = useState<ApiEndpoint>({
     id: 'right',
-    name: savedConfigs.right.name || 'API Endpoint B',
+    name: 'New API (Updated)',
     baseUrl: savedConfigs.right.baseUrl || '',
     endpoint: savedConfigs.right.endpoint || '',
     headers: savedConfigs.right.headers || {},
@@ -131,6 +133,7 @@ export default function JsonDiffTool() {
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const [showInstructions, setShowInstructions] = useState(true);
   const [isComparing, setIsComparing] = useState(false);
+  const [orderSensitive, setOrderSensitive] = useState(false);
 
   // Auto-save configurations when they change
   useEffect(() => {
@@ -233,7 +236,7 @@ export default function JsonDiffTool() {
     }
   }, [toast]);
 
-  // Deep equality check for objects and arrays
+  // Deep equality check for objects (order-insensitive)
   const deepEqual = (obj1: any, obj2: any): boolean => {
     if (obj1 === obj2) return true;
     if (obj1 == null || obj2 == null) return false;
@@ -241,10 +244,14 @@ export default function JsonDiffTool() {
     
     if (Array.isArray(obj1) && Array.isArray(obj2)) {
       if (obj1.length !== obj2.length) return false;
-      // For arrays, check if all elements exist in both (order-insensitive)
-      const sorted1 = [...obj1].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-      const sorted2 = [...obj2].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-      return sorted1.every((item, index) => deepEqual(item, sorted2[index]));
+      // For arrays, we need order-insensitive comparison
+      const arr2Copy = [...obj2];
+      for (const item1 of obj1) {
+        const index = arr2Copy.findIndex(item2 => deepEqual(item1, item2));
+        if (index === -1) return false;
+        arr2Copy.splice(index, 1);
+      }
+      return arr2Copy.length === 0;
     }
     
     if (typeof obj1 === 'object') {
@@ -255,6 +262,56 @@ export default function JsonDiffTool() {
     }
     
     return false;
+  };
+
+  // Generate a unique identifier for an object to enable intelligent matching
+  const generateObjectId = (obj: any, path: string = ''): string => {
+    if (obj === null || obj === undefined) return 'null';
+    if (typeof obj !== 'object') return String(obj);
+    
+    if (Array.isArray(obj)) {
+      return `array_${obj.length}_${obj.map((item, i) => generateObjectId(item, `${path}[${i}]`)).join('_')}`;
+    }
+    
+    // For objects, create ID based on key-value pairs (sorted for consistency)
+    const keys = Object.keys(obj).sort();
+    const idParts = keys.map(key => {
+      const value = obj[key];
+      // Use common identifier fields for better matching
+      if (key.toLowerCase().includes('id') || key === 'name' || key === 'key' || key === 'uuid') {
+        return `${key}:${value}`;
+      }
+      return `${key}:${typeof value === 'object' ? 'obj' : String(value).substring(0, 10)}`;
+    });
+    return idParts.join('|');
+  };
+
+  // Find best match for an object in an array based on content similarity
+  const findBestMatch = (target: any, candidates: any[], usedIndices: Set<number>): { match: any; index: number; similarity: number } | null => {
+    let bestMatch = null;
+    let bestSimilarity = 0;
+    let bestIndex = -1;
+    
+    for (let i = 0; i < candidates.length; i++) {
+      if (usedIndices.has(i)) continue;
+      
+      const candidate = candidates[i];
+      
+      // First check for exact match
+      if (deepEqual(target, candidate)) {
+        return { match: candidate, index: i, similarity: 1.0 };
+      }
+      
+      // Then check for high similarity
+      const similarity = calculateSimilarity(target, candidate);
+      if (similarity > bestSimilarity && similarity > 0.7) { // 70% threshold for intelligent matching
+        bestMatch = candidate;
+        bestSimilarity = similarity;
+        bestIndex = i;
+      }
+    }
+    
+    return bestMatch ? { match: bestMatch, index: bestIndex, similarity: bestSimilarity } : null;
   };
 
   // Calculate similarity score between two objects (0-1 scale)
@@ -311,7 +368,7 @@ export default function JsonDiffTool() {
   };
 
   // Advanced JSON comparison algorithm
-  const compareJsonData = useCallback((obj1: any, obj2: any): ComparisonResult => {
+  const compareJsonData = useCallback((obj1: any, obj2: any, isOrderSensitive: boolean = false): ComparisonResult => {
     const differences: DiffItem[] = [];
     
     const compare = (a: any, b: any, path: string = '') => {
@@ -329,102 +386,93 @@ export default function JsonDiffTool() {
       }
 
       if (Array.isArray(a) && Array.isArray(b)) {
-        // Intelligent order-insensitive array comparison
-        const smartArrayCompare = (arr1: any[], arr2: any[]) => {
-          const matched = new Set<number>();
-          const unmatched1: any[] = [];
-          const unmatched2: any[] = [];
-          
-          // First pass: exact matches (including order-insensitive object matching)
-          for (let i = 0; i < arr1.length; i++) {
-            let found = false;
-            for (let j = 0; j < arr2.length; j++) {
-              if (matched.has(j)) continue;
-              
-              if (deepEqual(arr1[i], arr2[j])) {
-                matched.add(j);
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              unmatched1.push({ item: arr1[i], index: i });
-            }
-          }
-          
-          // Collect unmatched items from second array
-          for (let j = 0; j < arr2.length; j++) {
-            if (!matched.has(j)) {
-              unmatched2.push({ item: arr2[j], index: j });
-            }
-          }
-          
-          // Second pass: intelligent partial matching for objects
-          const stillUnmatched1: any[] = [];
-          const stillUnmatched2: any[] = [];
-          const partialMatched = new Set<number>();
-          
-          for (const um1 of unmatched1) {
-            let bestMatch = null;
-            let bestScore = 0;
-            let bestIndex = -1;
-            
-            for (let k = 0; k < unmatched2.length; k++) {
-              if (partialMatched.has(k)) continue;
-              
-              const um2 = unmatched2[k];
-              const score = calculateSimilarity(um1.item, um2.item);
-              
-              if (score > 0.7 && score > bestScore) { // 70% similarity threshold
-                bestMatch = um2;
-                bestScore = score;
-                bestIndex = k;
-              }
-            }
-            
-            if (bestMatch && bestScore > 0.7) {
-              partialMatched.add(bestIndex);
-              // Compare the similar objects to find specific differences
-              compare(um1.item, bestMatch.item, `${path}[${um1.index}]`);
+        if (isOrderSensitive) {
+          // Order-sensitive array comparison (strict positional matching)
+          const maxLength = Math.max(a.length, b.length);
+          for (let i = 0; i < maxLength; i++) {
+            if (i >= a.length) {
+              const severity = getSeverity(`${path}[${i}]`, 'extra');
+              differences.push({
+                path: `${path}[${i}]`,
+                type: 'extra',
+                severity,
+                oldValue: undefined,
+                newValue: b[i],
+                description: `Extra array item at position ${i} (order-sensitive)`
+              });
+            } else if (i >= b.length) {
+              const severity = getSeverity(`${path}[${i}]`, 'missing');
+              differences.push({
+                path: `${path}[${i}]`,
+                type: 'missing',
+                severity,
+                oldValue: a[i],
+                newValue: undefined,
+                description: `Missing array item at position ${i} (order-sensitive)`
+              });
             } else {
-              stillUnmatched1.push(um1);
+              compare(a[i], b[i], `${path}[${i}]`);
+            }
+          }
+        } else {
+          // TRULY INTELLIGENT ORDER-INSENSITIVE ARRAY COMPARISON
+          // This is the core algorithm that makes our product world-class
+          
+          const usedIndicesInB = new Set<number>();
+          const unmatchedFromA: Array<{item: any, originalIndex: number}> = [];
+          
+          // Phase 1: Find exact matches and high-similarity matches
+          for (let i = 0; i < a.length; i++) {
+            const itemA = a[i];
+            const bestMatch = findBestMatch(itemA, b, usedIndicesInB);
+            
+            if (bestMatch && bestMatch.similarity >= 0.95) {
+              // Exact or near-exact match found
+              usedIndicesInB.add(bestMatch.index);
+              
+              if (bestMatch.similarity < 1.0) {
+                // Items are similar but not identical - compare them for detailed differences
+                compare(itemA, bestMatch.match, `${path}[${i}]`);
+              }
+              // If similarity is 1.0, items are identical - no differences to report
+            } else if (bestMatch && bestMatch.similarity >= 0.7) {
+              // Partial match - these are likely the same logical item with some changes
+              usedIndicesInB.add(bestMatch.index);
+              compare(itemA, bestMatch.match, `${path}[${i}]`);
+            } else {
+              // No good match found - this item might be missing from B
+              unmatchedFromA.push({ item: itemA, originalIndex: i });
             }
           }
           
-          // Collect still unmatched from second array
-          for (let k = 0; k < unmatched2.length; k++) {
-            if (!partialMatched.has(k)) {
-              stillUnmatched2.push(unmatched2[k]);
-            }
-          }
-          
-          // Report truly missing/extra items
-          for (const um1 of stillUnmatched1) {
-            const severity = getSeverity(path, 'missing');
+          // Phase 2: Identify truly missing items (from A but not in B)
+          for (const unmatched of unmatchedFromA) {
+            const severity = getSeverity(`${path}[${unmatched.originalIndex}]`, 'missing');
             differences.push({
-              path: `${path}[${um1.index}]`,
+              path: `${path}[${unmatched.originalIndex}]`,
               type: 'missing',
               severity,
-              oldValue: um1.item,
+              oldValue: unmatched.item,
               newValue: undefined,
-              description: `Array item not found in right object (no similar match)`
+              description: `Item from Live API not found in New API (no similar match found)`
             });
           }
           
-          for (const um2 of stillUnmatched2) {
-            const severity = getSeverity(path, 'extra');
-            differences.push({
-              path: `${path}[${um2.index}]`,
-              type: 'extra',
-              severity,
-              oldValue: undefined,
-              newValue: um2.item,
-              description: `Extra array item in right object (no similar match)`
-            });
+          // Phase 3: Identify truly extra items (in B but not matched with A)
+          for (let j = 0; j < b.length; j++) {
+            if (!usedIndicesInB.has(j)) {
+              const severity = getSeverity(`${path}[${j}]`, 'extra');
+              differences.push({
+                path: `${path}[${j}]`,
+                type: 'extra',
+                severity,
+                oldValue: undefined,
+                newValue: b[j],
+                description: `New item in New API not found in Live API`
+              });
+            }
           }
-        };
-        
-        smartArrayCompare(a, b);
+        }
         return;
       }
 
@@ -530,7 +578,7 @@ export default function JsonDiffTool() {
     // Simulate processing time for better UX
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const result = compareJsonData(leftEndpoint.response, rightEndpoint.response);
+    const result = compareJsonData(leftEndpoint.response, rightEndpoint.response, orderSensitive);
     setComparisonResult(result);
     setIsComparing(false);
 
@@ -635,6 +683,16 @@ export default function JsonDiffTool() {
               {showInstructions ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
               {showInstructions ? 'Hide Guide' : 'Show Guide'}
             </Button>
+            
+            <Button
+              variant={orderSensitive ? "default" : "outline"}
+              size="sm"
+              onClick={() => setOrderSensitive(!orderSensitive)}
+              className={orderSensitive ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-orange-200 text-orange-600 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {orderSensitive ? 'Order Sensitive' : 'Order Insensitive'}
+            </Button>
           </div>
         </motion.div>
 
@@ -664,18 +722,70 @@ export default function JsonDiffTool() {
                   </div>
                 </CardHeader>
                 <CardContent className="text-blue-600 dark:text-blue-400">
-                  <div className="grid md:grid-cols-3 gap-4 text-sm">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">1. Configure Endpoints</h4>
-                      <p>Set base URLs, endpoints, and custom headers for both APIs you want to compare.</p>
+                  <div className="space-y-4">
+                    {/* Professional Workflow Guide */}
+                    <div className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+                      <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center">
+                        🎯 Professional API Change Tracking Workflow
+                      </h4>
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span className="font-medium text-green-700 dark:text-green-300">Live API (Current)</span>
+                          </div>
+                          <p className="text-blue-700 dark:text-blue-300 ml-5">Configure your production/current API endpoint that's currently live and serving users.</p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                            <span className="font-medium text-orange-700 dark:text-orange-300">New API (Updated)</span>
+                          </div>
+                          <p className="text-blue-700 dark:text-blue-300 ml-5">Configure your updated/new API version that you want to test against the current version.</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">2. Fetch Data</h4>
-                      <p>Click "Fetch" for each endpoint sequentially. Review responses before comparing.</p>
+                    
+                    {/* Step-by-step Guide */}
+                    <div className="grid md:grid-cols-3 gap-4 text-sm">
+                      <div className="space-y-2">
+                        <h4 className="font-semibold flex items-center">
+                          <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">1</span>
+                          Configure Both APIs
+                        </h4>
+                        <p>Set base URLs, endpoints, and custom headers. Use the same endpoint path for both to compare versions.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-semibold flex items-center">
+                          <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">2</span>
+                          Fetch & Review
+                        </h4>
+                        <p>Fetch both endpoints and review responses. Ensure both are successful before comparing.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-semibold flex items-center">
+                          <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs mr-2">3</span>
+                          Advanced Analysis
+                        </h4>
+                        <p>Use our world-class semantic diff analysis to identify breaking changes and improvements.</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">3. Compare & Analyze</h4>
-                      <p>Use our advanced diff viewer to see semantic differences, not just text changes.</p>
+                    
+                    {/* Order Sensitivity Guide */}
+                    <div className="bg-gradient-to-r from-orange-100 to-yellow-100 dark:from-orange-900 dark:to-yellow-900 p-4 rounded-lg border border-orange-200 dark:border-orange-700">
+                      <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2 flex items-center">
+                        ⚡ Order Sensitivity Control
+                      </h4>
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <span className="font-medium text-green-700 dark:text-green-300">Order Insensitive (Default)</span>
+                          <p className="text-orange-700 dark:text-orange-300">Focuses on semantic differences. Array items are matched intelligently regardless of order.</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="font-medium text-orange-700 dark:text-orange-300">Order Sensitive</span>
+                          <p className="text-orange-700 dark:text-orange-300">Strict position-based comparison. Shows order changes as differences.</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

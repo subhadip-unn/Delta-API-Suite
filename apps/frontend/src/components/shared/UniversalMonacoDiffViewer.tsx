@@ -118,15 +118,23 @@ export default function UniversalMonacoDiffViewer({
   const formattedLeftData = useMemo(() => formatJson(leftData), [leftData]);
   const formattedRightData = useMemo(() => formatJson(rightData), [rightData]);
 
+  // Improved Monaco Editor cleanup to prevent disposal errors
   useEffect(() => {
     return () => {
-      if (editorRef.current) {
-        try {
-          editorRef.current.dispose();
-        } catch (error) {
-          console.warn('Monaco Editor cleanup warning:', error);
+      // Use setTimeout to ensure disposal happens after React's cleanup
+      setTimeout(() => {
+        if (editorRef.current) {
+          try {
+            // Check if editor is still mounted before disposing
+            if (editorRef.current.getModel && editorRef.current.getModel()) {
+              editorRef.current.dispose();
+            }
+          } catch (error) {
+            // Silently handle disposal errors as they're often harmless
+            console.debug('Monaco Editor cleanup (expected during unmount):', error instanceof Error ? error.message : String(error));
+          }
         }
-      }
+      }, 0);
     };
   }, []);
 

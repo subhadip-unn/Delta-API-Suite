@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:analyze": "tsc -b && vite build --mode analyze",
+    "bundle:analyze": "npx vite-bundle-analyzer dist",
     "lint": "eslint .",
     "preview": "vite preview"
   },
