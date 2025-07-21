@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft, Download, Loader2, AlertCircle, BarChart, CheckCircle, AlertTriangle, XCircle, Search } from 'lucide-react';
+import { ChevronLeft, Download, Loader2, AlertCircle, BarChart, CheckCircle, AlertTriangle, XCircle, Search, Globe, User, Calendar, Activity } from 'lucide-react';
 import { apiService } from '../services/api';
 import UniversalMonacoDiffViewer from '../components/shared/UniversalMonacoDiffViewer';
 import type { Report as ReportType, ReportJobDetail, ReportEndpoint, FilterType } from '../components/report/types';
@@ -171,37 +171,75 @@ const Report = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-4 mb-2">
-                <Link 
-                  to="/config" 
-                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Back to Config
-                </Link>
-                <button
-                  onClick={handleDownload}
-                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  Download JSON
-                </button>
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">API Comparison Report</h1>
-              <p className="text-sm text-gray-600">
-                Generated on {new Date(report.timestamp || Date.now()).toLocaleString()}
-                {report.testEngineer && (
-                  <span className="ml-4">QA Engineer: <span className="font-medium">{report.testEngineer}</span></span>
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-6">
+              <Link
+                to="/"
+                className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 mt-1"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Back to Dashboard
+              </Link>
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-3">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    API Comparison Report
+                  </h1>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {reportId}
+                  </span>
+                </div>
+                
+                {report && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Calendar className="h-4 w-4" />
+                      <span className="font-medium">Generated:</span>
+                      <span>{new Date(report.timestamp).toLocaleString()}</span>
+                    </div>
+                    
+                    {report.testEngineer && (
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <User className="h-4 w-4" />
+                        <span className="font-medium">Tested By:</span>
+                        <span className="font-semibold text-gray-900">{report.testEngineer}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Activity className="h-4 w-4" />
+                      <span className="font-medium">Total Tests:</span>
+                      <span className="font-semibold text-gray-900">{summary.total}</span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Globe className="h-4 w-4" />
+                      <span className="font-medium">Platforms:</span>
+                      <span className="font-semibold text-gray-900">
+                        {report.jobs ? [...new Set(report.jobs.map(j => j.platform))].join(', ') : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
                 )}
-              </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleDownload}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Report
+              </button>
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

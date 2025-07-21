@@ -118,27 +118,78 @@ export default function UniversalMonacoDiffViewer({
   const formattedLeftData = useMemo(() => formatJson(leftData), [leftData]);
   const formattedRightData = useMemo(() => formatJson(rightData), [rightData]);
 
-  // Improved Monaco Editor cleanup to prevent disposal errors
+  // Fixed Monaco Editor cleanup to prevent disposal errors
   useEffect(() => {
     return () => {
-      // Use setTimeout to ensure disposal happens after React's cleanup
-      setTimeout(() => {
-        if (editorRef.current) {
-          try {
-            // Check if editor is still mounted before disposing
-            if (editorRef.current.getModel && editorRef.current.getModel()) {
-              editorRef.current.dispose();
+      // Cleanup Monaco Editor properly
+      if (editorRef.current) {
+        try {
+          // For DiffEditor, we need to dispose both models and the editor
+          const editor = editorRef.current;
+          
+          // Check if it's a DiffEditor (has getOriginalEditor method)
+          if (editor.getOriginalEditor && editor.getModifiedEditor) {
+            // DiffEditor cleanup
+            const originalModel = editor.getOriginalEditor().getModel();
+            const modifiedModel = editor.getModifiedEditor().getModel();
+            
+            // Dispose models first
+            if (originalModel && !originalModel.isDisposed()) {
+              originalModel.dispose();
             }
-          } catch (error) {
-            // Silently handle disposal errors as they're often harmless
-            console.debug('Monaco Editor cleanup (expected during unmount):', error instanceof Error ? error.message : String(error));
+            if (modifiedModel && !modifiedModel.isDisposed()) {
+              modifiedModel.dispose();
+            }
+            
+            // Then dispose the editor
+            if (editor.dispose && typeof editor.dispose === 'function') {
+              editor.dispose();
+            }
+          } else if (editor.getModel) {
+            // Regular Editor cleanup
+            const model = editor.getModel();
+            if (model && !model.isDisposed()) {
+              model.dispose();
+            }
+            if (editor.dispose && typeof editor.dispose === 'function') {
+              editor.dispose();
+            }
           }
+        } catch (error) {
+          // Log disposal errors for debugging but don't throw
+          console.debug('Monaco Editor cleanup (safe to ignore):', error instanceof Error ? error.message : String(error));
+        } finally {
+          // Clear the ref
+          editorRef.current = null;
         }
-      }, 0);
+      }
     };
   }, []);
 
   const handleEditorDidMount = (editor: any) => {
+    // Clean up any existing editor before setting new one
+    if (editorRef.current && editorRef.current !== editor) {
+      try {
+        const oldEditor = editorRef.current;
+        if (oldEditor.getOriginalEditor && oldEditor.getModifiedEditor) {
+          // DiffEditor cleanup
+          const originalModel = oldEditor.getOriginalEditor().getModel();
+          const modifiedModel = oldEditor.getModifiedEditor().getModel();
+          if (originalModel && !originalModel.isDisposed()) originalModel.dispose();
+          if (modifiedModel && !modifiedModel.isDisposed()) modifiedModel.dispose();
+        } else if (oldEditor.getModel) {
+          // Regular Editor cleanup
+          const model = oldEditor.getModel();
+          if (model && !model.isDisposed()) model.dispose();
+        }
+        if (oldEditor.dispose && typeof oldEditor.dispose === 'function') {
+          oldEditor.dispose();
+        }
+      } catch (error) {
+        console.debug('Previous editor cleanup:', error);
+      }
+    }
+    
     editorRef.current = editor;
   };
 
