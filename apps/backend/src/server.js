@@ -42,14 +42,30 @@ app.post('/api/compare', async (req, res) => {
     const { folderTs, humanTs } = getIndianTimestamp();
     
     // Normalize the config to ensure compatibility between frontend and backend
-    console.log('Normalizing config to ensure platform compatibility...');
+    console.log('🔧 [SERVER] Normalizing config to ensure platform compatibility...');
+    console.log('📥 [SERVER] Received config structure:', {
+      endpoints: config.endpoints?.length || 0,
+      jobs: config.jobs?.length || 0,
+      headers: Object.keys(config.headers || {}).length,
+      ids: Object.keys(config.ids || {}).length
+    });
+    
     const normalizedConfig = normalizeConfig(config);
-    console.log(`Normalized ${config.endpoints?.length || 0} endpoints into ${normalizedConfig.endpoints?.length || 0} platform-specific endpoints`);
+    console.log(`✅ [SERVER] Normalized ${config.endpoints?.length || 0} endpoints into ${normalizedConfig.endpoints?.length || 0} platform-specific endpoints`);
+    console.log('📊 [SERVER] Normalized config jobs:', normalizedConfig.jobs?.length || 0);
     
     // Run the comparison with normalized config
     const startTime = Date.now();
+    console.log('🚀 [SERVER] Starting runAllJobs with qaName:', qaName);
     const reportData = await runAllJobs(normalizedConfig, qaName);
     const elapsedMs = Date.now() - startTime;
+    
+    console.log('📈 [SERVER] Report data generated:', {
+      totalTasks: reportData.totalTasks,
+      endpoints: reportData.endpoints?.length || 0,
+      jobs: reportData.jobs?.length || 0,
+      testEngineer: reportData.testEngineer
+    });
     
     // Add metadata to the report
     const completeReport = {

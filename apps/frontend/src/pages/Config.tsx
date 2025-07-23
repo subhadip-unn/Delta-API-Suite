@@ -13,8 +13,7 @@ import { apiService } from '../services/api';
 function RunComparisonButton() {
   // Use context hooks directly from useConfig - no intermediate variables
   const { config } = useConfig();
-  const auth = useAuth();
-  const user = auth as any; 
+  const { qaName, userRole, isAuthenticated } = useAuth(); 
   
   // Toast hook for notifications
   const { toast } = useToast();
@@ -60,9 +59,10 @@ function RunComparisonButton() {
     setIsRunning(true);
     try {
       // Make sure we have a user name and save it to localStorage for persistence
-      const qaName = user?.displayName || localStorage.getItem('userName') || 'QA Engineer';
-      localStorage.setItem('userName', qaName); // Always store the name for future use
-      console.log(`Starting comparison as QA: ${qaName}`);
+      const currentQaName = qaName || localStorage.getItem('userName') || 'QA Engineer';
+      localStorage.setItem('userName', currentQaName); // Always store the name for future use
+      console.log(`Starting comparison as QA: ${currentQaName}`);
+      console.log(`DEBUG: Auth context qaName: ${qaName}, userRole: ${userRole}, isAuthenticated: ${isAuthenticated}`);
       
       // Debug detailed config content
       console.log('DEBUG: Config before API call', { 
@@ -75,7 +75,7 @@ function RunComparisonButton() {
       });
 
       // Single API call with proper user name
-      const result = await apiService.runComparison(config, qaName);
+      const result = await apiService.runComparison(config, currentQaName);
 
       // Handle success result
       if (result.success && result.reportId) {

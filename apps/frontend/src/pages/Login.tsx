@@ -17,12 +17,21 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (name.trim().length < 2) {
+    const trimmedName = name.trim();
+    
+    if (trimmedName.length < 2) {
       setError('Please enter your name (minimum 2 characters)');
       return;
     }
     
-    login(name, role);
+    // CORE FIX: Prevent users from entering role names as their actual names
+    if (trimmedName === 'QA Engineer' || trimmedName === 'Developer' || trimmedName === 'Manager') {
+      setError('Please enter your actual name, not your role title');
+      return;
+    }
+    
+    console.log(`🔐 [LOGIN] User logging in: ${trimmedName} as ${role}`);
+    login(trimmedName, role);
     navigate('/dashboard');
   };
 

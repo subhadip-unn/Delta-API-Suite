@@ -9,7 +9,7 @@ import './global.css';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Config = lazy(() => import('./pages/Config'));
 const Reports = lazy(() => import('./pages/Reports'));
-const Report = lazy(() => import('./pages/Report'));
+const Report = lazy(() => import('./pages/ReportFixed'));
 const JsonDiffTool = lazy(() => import('./pages/JsonDiffTool'));
 const Login = lazy(() => import('./pages/Login'));
 

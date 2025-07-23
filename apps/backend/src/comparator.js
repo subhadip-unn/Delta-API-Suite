@@ -1,7 +1,7 @@
-// comparator.js - Core comparison logic 
-const DeepDiff = require('deep-diff').diff;
+// comparator.js - Core comparison logic with advanced DeltaPro+ engine
 const pLimit = require('p-limit').default || require('p-limit');
-const { buildUrl, retryFetch, filterDiffs, classifyDiffs } = require('./utils');
+const { buildUrl, retryFetch, filterDiffs } = require('./utils');
+const { compareAdvanced } = require('./shared-comparison-engine');
 
 /**
  * Run a job with the given configuration
@@ -17,9 +17,14 @@ async function runJob(jobConfig, headers, ids, endpoints) {
   const concurrencyLimit = 5;
   const limit = pLimit(concurrencyLimit);        // max N parallel comparisons
 
-  // Log the job configuration and available endpoints
-  console.log(`Processing job: ${jobConfig.name} for platform: ${platform}`);
-  console.log(`Available endpoints: ${endpoints.length}`);
+  // Enhanced logging for multi-platform verification
+  console.log(`\n🚀 [MULTI-PLATFORM] Processing job: ${jobConfig.name}`);
+  console.log(`📱 [PLATFORM] Target platform: ${platform} (${platform === 'i' ? 'iOS' : platform === 'a' ? 'Android' : platform === 'm' ? 'Mobile Web' : platform === 'w' ? 'Desktop Web' : 'Unknown'})`);
+  console.log(`🔗 [ENDPOINTS] Available endpoints: ${endpoints.length}`);
+  console.log(`📋 [HEADERS] Platform-specific headers for '${platform}':`, JSON.stringify(headersTempl, null, 2));
+  console.log(`🌍 [GEO-TESTING] Multi-location support: ${Array.isArray(headersTempl["cb-loc"]) ? headersTempl["cb-loc"].join(', ') : headersTempl["cb-loc"] || 'No geo specified'}`);
+  console.log(`🚫 [IGNORE-PATHS] Configured ignore paths: ${ignorePaths.length > 0 ? ignorePaths.join(', ') : 'none'}`);
+  console.log(`🔄 [RETRY-POLICY] Retries: ${retries}, Delay: ${delayMs}ms`);
   
   /**
    * Helper function to find an endpoint by key and platform
@@ -28,29 +33,30 @@ async function runJob(jobConfig, headers, ids, endpoints) {
    * @returns {Object|null} - The matched endpoint or null if not found
    */
   function findEndpointForPlatform(endpointKey) {
+    console.log(`\n🔍 [FIND-ENDPOINT] Looking for endpoint: ${endpointKey}`);
+    console.log(`🔍 [FIND-ENDPOINT] Target platform: ${platform}`);
+    console.log(`🔍 [FIND-ENDPOINT] Available endpoints:`, endpoints.map(e => ({ key: e.key, platform: e.platform, platforms: e.platforms })));
+    
     if (!endpointKey) {
-      console.warn(`Missing endpoint key in job: ${jobConfig.name}`);
+      console.error(`❌ [FIND-ENDPOINT] Missing endpoint key in job: ${jobConfig.name}`);
       return null;
     }
     
-    // Find endpoint by key first
-    const endpoint = endpoints.find(e => e.key === endpointKey);
+    // Find endpoint by key AND platform (critical fix for DeltaBulkPro)
+    const endpoint = endpoints.find(e => 
+      e.key === endpointKey && 
+      (e.platform === platform || (Array.isArray(e.platforms) && e.platforms.includes(platform)))
+    );
+    
     if (!endpoint) {
-      console.warn(`Endpoint not found with key: ${endpointKey}`);
+      console.error(`❌ [FIND-ENDPOINT] Endpoint not found with key: ${endpointKey} for platform: ${platform}`);
+      console.error(`❌ [FIND-ENDPOINT] Available endpoints:`, endpoints.map(e => ({ key: e.key, platform: e.platform, platforms: e.platforms })));
       return null;
     }
     
-    // Now check if this endpoint supports the job's platform
-    // Handle both formats: endpoint.platform (string) or endpoint.platforms (array)
-    const platformMatches = 
-      endpoint.platform === platform || 
-      (Array.isArray(endpoint.platforms) && endpoint.platforms.includes(platform));
+    console.log(`✅ [FIND-ENDPOINT] Found platform-specific endpoint:`, { key: endpoint.key, platform: endpoint.platform, platforms: endpoint.platforms });
     
-    if (!platformMatches) {
-      console.warn(`Endpoint ${endpointKey} does not support platform ${platform}`);
-      console.warn(`Available platforms: ${JSON.stringify(endpoint.platform || endpoint.platforms)}`);
-      return null;
-    }
+    // Platform matching already done in find() above - no need for redundant checks
     
     // Create a normalized copy of the endpoint with consistent platform property
     const normalizedEndpoint = {
@@ -58,7 +64,7 @@ async function runJob(jobConfig, headers, ids, endpoints) {
       platform: platform // Ensure consistent platform property
     };
     
-
+    console.log(`✅ [FIND-ENDPOINT] Returning normalized endpoint:`, { key: normalizedEndpoint.key, platform: normalizedEndpoint.platform });
     return normalizedEndpoint;
   }
   
@@ -66,17 +72,40 @@ async function runJob(jobConfig, headers, ids, endpoints) {
   let endpointPairs = [];
   
   if (Array.isArray(jobConfig.endpointPairs) && jobConfig.endpointPairs.length > 0) {
-    // Modern format: use explicit pairs: [{endpointA, endpointB}, ...]
-    console.log(`Job uses ${jobConfig.endpointPairs.length} explicit endpoint pairs`);
+    console.log(`📝 [ENDPOINT-PAIRS] Job has ${jobConfig.endpointPairs.length} endpoint pairs`);
+    console.log(`📝 [ENDPOINT-PAIRS] Pair format:`, jobConfig.endpointPairs);
     
     for (const pair of jobConfig.endpointPairs) {
-      const epA = findEndpointForPlatform(pair.endpointA);
-      const epB = findEndpointForPlatform(pair.endpointB);
-      
-      if (epA && epB) {
-        endpointPairs.push({ epA, epB });
+      // Handle different pair formats
+      if (typeof pair === 'string') {
+        // Simple string format: use same endpoint for both A and B
+        console.log(`🔗 [PAIR-STRING] Processing endpoint: ${pair}`);
+        console.log(`🔗 [PAIR-STRING] Current platform: ${platform}`);
+        console.log(`🔗 [PAIR-STRING] Available endpoints for platform:`, endpoints.filter(e => e.platform === platform).map(e => ({ key: e.key, platform: e.platform })));
+        
+        const ep = findEndpointForPlatform(pair);
+        if (ep) {
+          endpointPairs.push({ epA: ep, epB: ep });
+          console.log(`  ✅ Added self-comparison pair: ${pair}`);
+        } else {
+          console.error(`  ❌ Endpoint not found: ${pair}`);
+          console.error(`  ❌ Available endpoints:`, endpoints.map(e => ({ key: e.key, platform: e.platform })));
+          console.error(`  ❌ Target platform: ${platform}`);
+        }
+      } else if (pair && typeof pair === 'object' && pair.endpointA && pair.endpointB) {
+        // Object format: {endpointA, endpointB}
+        console.log(`🔗 [PAIR-OBJECT] Processing pair: ${pair.endpointA} <-> ${pair.endpointB}`);
+        const epA = findEndpointForPlatform(pair.endpointA);
+        const epB = findEndpointForPlatform(pair.endpointB);
+        
+        if (epA && epB) {
+          endpointPairs.push({ epA, epB });
+          console.log(`  ✅ Added comparison pair: ${pair.endpointA} <-> ${pair.endpointB}`);
+        } else {
+          console.warn(`  ⚠️ Skipping endpoint pair ${pair.endpointA} <-> ${pair.endpointB} (one or both not found)`);
+        }
       } else {
-        console.warn(`Skipping endpoint pair ${pair.endpointA} <-> ${pair.endpointB} (one or both not found)`);
+        console.warn(`  ⚠️ Invalid pair format:`, pair);
       }
     }
   } else {
@@ -185,8 +214,8 @@ async function runJob(jobConfig, headers, ids, endpoints) {
             const headersB = { ...geoHeaders };
             
             // Substitute the ID into the path if needed
-            let pathA = epA.path;
-            let pathB = epB.path;
+            let pathA = epA.pathA || epA.path;
+            let pathB = epB.pathB || epB.path;
             
             if (idObj.value && idObj.category) {
               const idPattern = new RegExp(`{${idObj.category}}`, 'g');
@@ -259,6 +288,13 @@ async function runJob(jobConfig, headers, ids, endpoints) {
               return; // Skip this comparison task
             }
             
+            // Enhanced logging for API calls with headers verification
+            console.log(`\n🔍 [API-CALL] Endpoint: ${epA.key} | Geo: ${geo}`);
+            console.log(`📡 [REQUEST-A] URL: ${urlA}`);
+            console.log(`📡 [REQUEST-B] URL: ${urlB}`);
+            console.log(`🏷️ [HEADERS-A] Applied headers:`, JSON.stringify(headersA, null, 2));
+            console.log(`🏷️ [HEADERS-B] Applied headers:`, JSON.stringify(headersB, null, 2));
+            
             // Fetch both endpoints
             const [responseA, responseB] = await Promise.all([
               cachedFetch(urlA, headersA, retries, delayMs),
@@ -268,43 +304,37 @@ async function runJob(jobConfig, headers, ids, endpoints) {
             // Calculate differences
             let diffs = [];
             let diffCounts = { added: 0, deleted: 0, changed: 0, array: 0, total: 0 };
-            let diffSummary = null;
-            let classifiedDiffs = [];
             
-            // Only calculate diffs if both responses were successful
-            if (responseA.success && responseB.success) {
+            // Use the advanced shared comparison engine with comprehensive logging
+            if (responseA.success && responseB.success && responseA.data && responseB.data) {
               try {
-                // Use smart array-aware diff analysis instead of basic deep-diff
-                const diffAnalysis = classifyDiffs(responseA.data, responseB.data);
-                classifiedDiffs = diffAnalysis.diffs;
-                diffCounts = diffAnalysis.counts;
-                diffSummary = diffAnalysis.summary;
+                console.log(`\n🧠 [ADVANCED-DIFF] Using DeltaPro+ shared comparison engine for ${epA.key}`);
+                console.log(`⚡ [ALGORITHM] 3-phase intelligent array matching with semantic similarity`);
+                console.log(`🔒 [SECURITY] Real-time, in-memory only, no data storage`);
+                console.log(`🔄 [ORDER-INSENSITIVE] Semantic matching across array positions`);
                 
-                // Filter diffs using ignorePaths if needed
-                if (ignorePaths && ignorePaths.length > 0) {
-                  classifiedDiffs = filterDiffs(classifiedDiffs, ignorePaths);
-                  // Recalculate counts after filtering
-                  diffCounts = { added: 0, deleted: 0, changed: 0, array: 0, total: 0 };
-                  classifiedDiffs.forEach(diff => {
-                    switch (diff.kind) {
-                      case 'N': diffCounts.added++; break;
-                      case 'D': diffCounts.deleted++; break;
-                      case 'E': diffCounts.changed++; break;
-                      case 'A': diffCounts.array++; break;
-                    }
+                const comparisonResult = compareAdvanced(responseA.data, responseB.data);
+                
+                diffs = comparisonResult.diffs || [];
+                diffCounts = comparisonResult.summary || { added: 0, deleted: 0, changed: 0, array: 0, total: 0 };
+                
+                console.log(`\n📊 [DIFF-SUMMARY] Job: ${jobConfig.name} | Platform: ${platform} | Endpoint: ${epA.key} | Geo: ${geo}`);
+                console.log(`📈 [DIFF-COUNTS] Total: ${diffCounts.total}, Added: ${diffCounts.added}, Deleted: ${diffCounts.deleted}, Changed: ${diffCounts.changed}, Array: ${diffCounts.array}`);
+                console.log(`📏 [RESPONSE-SIZES] A: ${JSON.stringify(responseA.data).length} chars, B: ${JSON.stringify(responseB.data).length} chars`);
+                console.log(`🎯 [SEVERITY-BREAKDOWN] Critical: ${diffs.filter(d => d.severity === 'critical').length}, High: ${diffs.filter(d => d.severity === 'high').length}, Medium: ${diffs.filter(d => d.severity === 'medium').length}, Low: ${diffs.filter(d => d.severity === 'low').length}`);
+                
+                // Log sample diffs for verification
+                if (diffs.length > 0) {
+                  console.log(`🔍 [SAMPLE-DIFFS] First 3 diffs:`);
+                  diffs.slice(0, 3).forEach((diff, idx) => {
+                    console.log(`  ${idx + 1}. [${diff.severity?.toUpperCase()}] ${diff.type} at '${diff.path}': ${diff.description}`);
                   });
-                  diffCounts.total = diffCounts.added + diffCounts.deleted + diffCounts.changed + diffCounts.array;
                 }
                 
-                // Keep the original diffs for backward compatibility
-                diffs = classifiedDiffs;
-                
-                console.log(`Smart diff analysis for ${epA.key}: ${classifiedDiffs.length} meaningful diffs found`);
-                if (classifiedDiffs.length > 0) {
-                  console.log(`Diff summary: ${diffCounts.added} added, ${diffCounts.deleted} deleted, ${diffCounts.changed} changed, ${diffCounts.array} array changes`);
-                }
-              } catch (diffErr) {
-                console.error(`Error calculating smart diffs: ${diffErr.message}`);
+              } catch (compError) {
+                console.error(`❌ [COMPARISON-ERROR] Failed to compare responses for ${epA.key}:`, compError.message);
+                diffs = [];
+                diffCounts = { added: 0, deleted: 0, changed: 0, array: 0, total: 0 };
               }
             }
             
@@ -333,9 +363,9 @@ async function runJob(jobConfig, headers, ids, endpoints) {
                 error: responseB.error,
                 timeMs: responseB.responseTimeMs
               },
-              diffs: classifiedDiffs, // Enhanced diffs with severity/priority
+              diffs: diffs, // Enhanced diffs with severity/priority
               diffCounts,
-              diffSummary, // Advanced diff analysis summary
+              diffSummary: diffCounts, // Advanced diff analysis summary
               rawDiffs: diffs, // Original diffs for debugging
               rawJsonA: responseA.success ? responseA.data : null, // Raw JSON data for Monaco Diff Viewer
               rawJsonB: responseB.success ? responseB.data : null, // Raw JSON data for Monaco Diff Viewer
@@ -400,6 +430,7 @@ async function runJob(jobConfig, headers, ids, endpoints) {
     jobId: jobConfig.id || 'job-1',
     jobName: jobConfig.name || 'Job 1',
     platform,
+    testEngineer: jobConfig.testEngineer || 'QA Engineer',
     baseUrlA: jobConfig.baseUrlA || jobConfig.baseA || '',
     baseUrlB: jobConfig.baseUrlB || jobConfig.baseB || '',
     summary: {
@@ -426,19 +457,38 @@ async function runAllJobs(configState, qaName) {
   // Handle both old format (with jobs array) and new format (direct endpoints)
   let { jobs = [], headers = {}, ids = {}, endpoints = [] } = configState;
   
-  // If no jobs but we have endpoints, create a default job
+  console.log('🚀 [RUN-ALL-JOBS] Starting with config:', {
+    jobCount: jobs.length,
+    endpointCount: endpoints.length,
+    qaName,
+    platforms: Object.keys(headers)
+  });
+  
+  // Use the jobs created by normalizeConfig (they should already exist)
   if (jobs.length === 0 && endpoints.length > 0) {
-    // Extract endpoint keys for the job
-    const endpointKeys = endpoints.map(ep => ep.key);
+    console.error('❌ [RUN-ALL-JOBS] No jobs found after normalization! This should not happen.');
+    console.error('Config state:', JSON.stringify(configState, null, 2));
     
-    jobs = [{
-      name: 'API Comparison',
-      platform: 'i', // Default platform
-      ignorePaths: [],
-      retryPolicy: { retries: 3, delayMs: 1000 },
-      endpointsToRun: endpointKeys // Tell the job which endpoints to run
-    }];
-    console.log(`Created default job for ${endpoints.length} endpoints: ${endpointKeys.join(', ')}`);
+    // Fallback: create basic jobs for each platform
+    const platforms = Object.keys(headers).length > 0 ? Object.keys(headers) : ['i', 'a', 'm', 'w'];
+    jobs = platforms.map(platform => {
+      const platformName = {
+        'i': 'iOS',
+        'a': 'Android', 
+        'm': 'Mobile Web',
+        'w': 'Desktop Web'
+      }[platform] || platform;
+      
+      return {
+        name: `${platformName} API Comparison`,
+        platform: platform,
+        ignorePaths: [],
+        retryPolicy: { retries: 3, delayMs: 1000 },
+        endpointsToRun: endpoints.filter(ep => ep.platform === platform).map(ep => ep.key)
+      };
+    }).filter(job => job.endpointsToRun.length > 0);
+    
+    console.log(`🔧 [FALLBACK] Created ${jobs.length} fallback jobs`);
   }
   
   // Check if we have valid data
@@ -482,10 +532,16 @@ async function runAllJobs(configState, qaName) {
 
   // Ensure we have a valid QA name
   const testEngineer = qaName || 'QA Engineer';
-  console.log(`Running comparison for ${testEngineer} with ${jobs.length} jobs`);
+  console.log(`🧑‍💼 [QA-ATTRIBUTION] Running comparison for: ${testEngineer} with ${jobs.length} jobs`);
+  
+  // Add testEngineer to each job before running
+  const jobsWithQA = jobs.map(job => ({
+    ...job,
+    testEngineer: testEngineer
+  }));
   
   // Run all jobs and collect results
-  const jobPromises = jobs.map(job => runJob(job, headers, ids, endpoints));
+  const jobPromises = jobsWithQA.map(job => runJob(job, headers, ids, endpoints));
   const jobResults = await Promise.all(jobPromises);
   
   // Calculate overall stats

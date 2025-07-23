@@ -1,9 +1,39 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft, Download, Loader2, AlertCircle, BarChart, CheckCircle, AlertTriangle, XCircle, Search, Globe, User, Calendar, Activity } from 'lucide-react';
+import { ChevronLeft, Download, Loader2, AlertCircle, BarChart, CheckCircle, AlertTriangle, XCircle, Search, Smartphone, Monitor, Tablet, Target } from 'lucide-react';
 import { apiService } from '../services/api';
 import UniversalMonacoDiffViewer from '../components/shared/UniversalMonacoDiffViewer';
 import type { Report as ReportType, ReportJobDetail, ReportEndpoint, FilterType } from '../components/report/types';
+
+// Platform helpers
+const getPlatformIcon = (platform: string) => {
+  switch (platform?.toLowerCase()) {
+    case 'i': case 'ios': return <Smartphone className="h-4 w-4" />;
+    case 'a': case 'android': return <Tablet className="h-4 w-4" />;
+    case 'w': case 'web': case 'm': case 'mobile': return <Monitor className="h-4 w-4" />;
+    default: return <Target className="h-4 w-4" />;
+  }
+};
+
+const getPlatformName = (platform: string) => {
+  switch (platform?.toLowerCase()) {
+    case 'i': return 'iOS';
+    case 'a': return 'Android';
+    case 'w': return 'Website';
+    case 'm': return 'Mobile Web';
+    default: return platform?.toUpperCase() || 'Unknown';
+  }
+};
+
+const getPlatformColor = (platform: string) => {
+  switch (platform?.toLowerCase()) {
+    case 'i': return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200';
+    case 'a': return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200';
+    case 'w': return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900 dark:text-purple-200';
+    case 'm': return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900 dark:text-orange-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900 dark:text-gray-200';
+  }
+};
 
 const Report = () => {
   const { reportId } = useParams<{ reportId: string }>();
@@ -12,6 +42,7 @@ const Report = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
 
 
   useEffect(() => {
@@ -40,70 +71,131 @@ const Report = () => {
     }
   }, [reportId]);
 
-  // Calculate summary statistics
+  // Calculate enhanced summary statistics for multi-platform reporting
   const summary = useMemo(() => {
-    if (!report || !report.jobs) return { total: 0, passed: 0, warnings: 0, errors: 0 };
+    if (!report || !report.jobs) return { 
+      total: 0, passed: 0, warnings: 0, errors: 0, 
+      platforms: [], totalPlatforms: 0, totalEndpoints: 0,
+      avgResponseTime: 0, totalDiffs: 0, platformStats: {}
+    };
     
     let total = 0;
     let passed = 0;
     let warnings = 0;
     let errors = 0;
+    let totalDiffs = 0;
+    let totalResponseTime = 0;
+    let responseTimeCount = 0;
+    const platformStats: Record<string, any> = {};
+    const platforms = new Set<string>();
 
     report.jobs.forEach((job: ReportJobDetail) => {
+      const platform = job.platform || 'unknown';
+      if (platform) platforms.add(platform);
+      
+      if (!platformStats[platform]) {
+        platformStats[platform] = {
+          name: getPlatformName(platform),
+          total: 0,
+          passed: 0,
+          warnings: 0,
+          errors: 0,
+          endpoints: 0,
+          avgResponseTime: 0
+        };
+      }
+      
       if (job.endpoints) {
         job.endpoints.forEach((endpoint: ReportEndpoint) => {
           total++;
+          platformStats[platform].total++;
+          platformStats[platform].endpoints++;
+          
+          // Track response times (using available properties)
+          if ((endpoint as any).responseA?.timeMs) {
+            totalResponseTime += (endpoint as any).responseA.timeMs;
+            responseTimeCount++;
+          }
+          if ((endpoint as any).responseB?.timeMs) {
+            totalResponseTime += (endpoint as any).responseB.timeMs;
+            responseTimeCount++;
+          }
+          
           if (endpoint.diffs && endpoint.diffs.length > 0) {
+            totalDiffs += endpoint.diffs.length;
             const hasErrors = endpoint.diffs.some(diff => diff.kind === 'D' || diff.kind === 'N');
             if (hasErrors) {
               errors++;
+              platformStats[platform].errors++;
             } else {
               warnings++;
+              platformStats[platform].warnings++;
             }
           } else {
             passed++;
+            platformStats[platform].passed++;
           }
         });
       }
     });
 
-    return { total, passed, warnings, errors };
+    const avgResponseTime = responseTimeCount > 0 ? totalResponseTime / responseTimeCount : 0;
+
+    return { 
+      total, passed, warnings, errors, totalDiffs,
+      platforms: Array.from(platforms), 
+      totalPlatforms: platforms.size, 
+      totalEndpoints: total,
+      avgResponseTime,
+      platformStats
+    };
   }, [report]);
 
-  // Filter endpoints based on search and filter
-  const filteredEndpoints = useMemo(() => {
-    if (!report || !report.jobs) return [];
+  // Group endpoints by platform for platform-specific sections
+  const platformGroups = useMemo(() => {
+    if (!report || !report.jobs) return {};
     
-    let allEndpoints: ReportEndpoint[] = [];
+    const groups: Record<string, { job: ReportJobDetail; endpoints: ReportEndpoint[] }> = {};
+    
     report.jobs.forEach((job: ReportJobDetail) => {
-      if (job.endpoints) {
-        allEndpoints = [...allEndpoints, ...job.endpoints];
+      if (job.endpoints && job.endpoints.length > 0) {
+        const platform = job.platform || 'unknown';
+        groups[platform] = {
+          job,
+          endpoints: job.endpoints.filter((endpoint: ReportEndpoint) => {
+            // Search filter
+            const matchesSearch = !searchQuery || 
+              endpoint.key?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              endpoint.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              endpoint.urlA?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              endpoint.urlB?.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            // Status filter
+            const matchesFilter = activeFilter === 'all' || 
+              (activeFilter === 'passed' && (!endpoint.diffs || endpoint.diffs.length === 0)) ||
+              (activeFilter === 'warnings' && endpoint.diffs && endpoint.diffs.length > 0 && endpoint.diffs.length <= 5) ||
+              (activeFilter === 'errors' && endpoint.diffs && endpoint.diffs.length > 5);
+            
+            // Platform filter
+            const matchesPlatform = activePlatform === 'all' || platform === activePlatform;
+            
+            // Differences filter
+            const matchesDifferences = !showOnlyDifferences || (endpoint.diffs && endpoint.diffs.length > 0);
+            
+            return matchesSearch && matchesFilter && matchesPlatform && matchesDifferences;
+          })
+        };
       }
     });
+    
+    return groups;
+  }, [report, searchQuery, activeFilter, activePlatform, showOnlyDifferences]);
 
-    return allEndpoints.filter((endpoint: ReportEndpoint) => {
-      // Search filter
-      if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase();
-        if (!endpoint.key.toLowerCase().includes(searchLower) &&
-            !endpoint.urlA.toLowerCase().includes(searchLower) &&
-            !endpoint.urlB.toLowerCase().includes(searchLower)) {
-          return false;
-        }
-      }
-
-      // Status filter
-      if (activeFilter !== 'all') {
-        const hasDiffs = endpoint.diffs && endpoint.diffs.length > 0;
-        const hasErrors = hasDiffs && endpoint.diffs.some(diff => diff.kind === 'D' || diff.kind === 'N');
-        
-        if (activeFilter === 'errors' && !hasErrors) return false;
-        if (activeFilter === 'warnings' && (!hasDiffs || hasErrors)) return false;
-        if (activeFilter === 'failures' && !hasErrors) return false;
-      }
-
-      return true;
-    });
+  // Get available platforms for filter
+  const availablePlatforms = useMemo(() => {
+    if (!report || !report.jobs) return [];
+    return [...new Set(report.jobs.map(job => job.platform).filter(Boolean))];
+  }, [report]);
   }, [report, searchQuery, activeFilter]);
 
   const handleDownload = () => {
@@ -184,16 +276,23 @@ const Report = () => {
               </Link>
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-3">
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    API Comparison Report
+                  <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                    <BarChart className="h-8 w-8 mr-3 text-blue-600" />
+                    DeltaBulkPro Report
                   </h1>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     {reportId}
                   </span>
+                  {summary.totalPlatforms > 1 && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Multi-Platform
+                    </span>
+                  )}
                 </div>
                 
                 {report && (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4 text-sm">
                     <div className="flex items-center space-x-2 text-gray-600">
                       <Calendar className="h-4 w-4" />
                       <span className="font-medium">Generated:</span>
@@ -218,9 +317,23 @@ const Report = () => {
                       <Globe className="h-4 w-4" />
                       <span className="font-medium">Platforms:</span>
                       <span className="font-semibold text-gray-900">
-                        {report.jobs ? [...new Set(report.jobs.map(j => j.platform))].join(', ') : 'N/A'}
+                        {summary.totalPlatforms} ({summary.platforms.join(', ')})
                       </span>
                     </div>
+                    
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Target className="h-4 w-4" />
+                      <span className="font-medium">Endpoints:</span>
+                      <span className="font-semibold text-gray-900">{summary.totalEndpoints}</span>
+                    </div>
+                    
+                    {summary.avgResponseTime > 0 && (
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        <span className="font-medium">Avg Response:</span>
+                        <span className="font-semibold text-gray-900">{Math.round(summary.avgResponseTime)}ms</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -241,56 +354,139 @@ const Report = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Summary Cards */}
+        {/* Enhanced DeltaBulkPro Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <BarChart className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="ml-4">
+          <div className="bg-white rounded-lg shadow-lg border-l-4 border-blue-500 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium text-gray-500">Total Endpoints</p>
-                <p className="text-2xl font-semibold text-gray-900">{summary.total}</p>
+                <p className="text-3xl font-bold text-gray-900">{summary.total}</p>
+                <p className="text-xs text-gray-400 mt-1">Across {summary.totalPlatforms} platform{summary.totalPlatforms !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="flex-shrink-0">
+                <BarChart className="h-10 w-10 text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="ml-4">
+          <div className="bg-white rounded-lg shadow-lg border-l-4 border-green-500 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium text-gray-500">Passed</p>
-                <p className="text-2xl font-semibold text-gray-900">{summary.passed}</p>
+                <p className="text-3xl font-bold text-green-600">{summary.passed}</p>
+                <p className="text-xs text-gray-400 mt-1">{summary.total > 0 ? Math.round((summary.passed / summary.total) * 100) : 0}% success rate</p>
+              </div>
+              <div className="flex-shrink-0">
+                <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-8 w-8 text-yellow-600" />
-              </div>
-              <div className="ml-4">
+          <div className="bg-white rounded-lg shadow-lg border-l-4 border-yellow-500 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium text-gray-500">Warnings</p>
-                <p className="text-2xl font-semibold text-gray-900">{summary.warnings}</p>
+                <p className="text-3xl font-bold text-yellow-600">{summary.warnings}</p>
+                <p className="text-xs text-gray-400 mt-1">Minor differences found</p>
+              </div>
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-10 w-10 text-yellow-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <XCircle className="h-8 w-8 text-red-600" />
-              </div>
-              <div className="ml-4">
+          <div className="bg-white rounded-lg shadow-lg border-l-4 border-red-500 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium text-gray-500">Errors</p>
-                <p className="text-2xl font-semibold text-gray-900">{summary.errors}</p>
+                <p className="text-3xl font-bold text-red-600">{summary.errors}</p>
+                <p className="text-xs text-gray-400 mt-1">Critical differences found</p>
+              </div>
+              <div className="flex-shrink-0">
+                <XCircle className="h-10 w-10 text-red-600" />
               </div>
             </div>
           </div>
         </div>
+
+        {/* Professional Platform-Specific Statistics for DeltaBulkPro */}
+        {summary.totalPlatforms > 1 && Object.keys(summary.platformStats).length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center mb-6">
+              <TrendingUp className="h-6 w-6 text-blue-600 mr-2" />
+              <h2 className="text-xl font-bold text-gray-900">Platform Analysis</h2>
+              <span className="ml-2 text-sm text-gray-500">Detailed breakdown by platform</span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(summary.platformStats).map(([platform, stats]: [string, any]) => (
+                <div key={platform} className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-200 hover:border-blue-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-blue-50 rounded-lg">
+                        {getPlatformIcon(platform)}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{stats.name}</h3>
+                        <p className="text-sm text-gray-500">Platform: {platform.toUpperCase()}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600">Total Endpoints</span>
+                      <span className="text-lg font-bold text-gray-900">{stats.endpoints}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600 flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                        Passed
+                      </span>
+                      <span className="text-lg font-bold text-green-600">{stats.passed}</span>
+                    </div>
+                    
+                    {stats.warnings > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-600 flex items-center">
+                          <AlertTriangle className="h-4 w-4 text-yellow-500 mr-1" />
+                          Warnings
+                        </span>
+                        <span className="text-lg font-bold text-yellow-600">{stats.warnings}</span>
+                      </div>
+                    )}
+                    
+                    {stats.errors > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-600 flex items-center">
+                          <XCircle className="h-4 w-4 text-red-500 mr-1" />
+                          Errors
+                        </span>
+                        <span className="text-lg font-bold text-red-600">{stats.errors}</span>
+                      </div>
+                    )}
+                    
+                    <div className="pt-3 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-600">Success Rate</span>
+                        <span className={`text-lg font-bold ${
+                          stats.endpoints > 0 && (stats.passed / stats.endpoints) >= 0.8 
+                            ? 'text-green-600' 
+                            : stats.endpoints > 0 && (stats.passed / stats.endpoints) >= 0.5 
+                            ? 'text-yellow-600' 
+                            : 'text-red-600'
+                        }`}>
+                          {stats.endpoints > 0 ? Math.round((stats.passed / stats.endpoints) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search and Filter */}
         <div className="bg-white rounded-lg shadow mb-6">

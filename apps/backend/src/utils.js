@@ -578,40 +578,82 @@ function getIndianTimestamp() {
 function normalizeConfig(config) {
   if (!config) return {};
   
+  console.log('🔧 [CONFIG-NORMALIZE] Starting config normalization...');
+  console.log('📥 [CONFIG-INPUT] Received config:', JSON.stringify(config, null, 2));
+  
   const normalizedConfig = { ...config };
   
-  // Normalize endpoints
+  // Get available platforms from jobs or headers
+  const availablePlatforms = [];
+  if (config.jobs && Array.isArray(config.jobs)) {
+    config.jobs.forEach(job => {
+      if (job.platform && !availablePlatforms.includes(job.platform)) {
+        availablePlatforms.push(job.platform);
+      }
+    });
+  }
+  if (config.headers && typeof config.headers === 'object') {
+    Object.keys(config.headers).forEach(platform => {
+      if (!availablePlatforms.includes(platform)) {
+        availablePlatforms.push(platform);
+      }
+    });
+  }
+  
+  console.log('📱 [PLATFORMS] Available platforms:', availablePlatforms);
+  
+  // Normalize endpoints - expand each endpoint for each platform
   if (Array.isArray(normalizedConfig.endpoints)) {
     const expandedEndpoints = [];
     
     // Process each endpoint
     normalizedConfig.endpoints.forEach(endpoint => {
-      // Handle endpoints with platforms array by expanding them
+      console.log(`🔗 [ENDPOINT] Processing endpoint: ${endpoint.key}`);
+      
+      // If endpoint already has platforms array, use it
       if (Array.isArray(endpoint.platforms) && endpoint.platforms.length > 0) {
-        // Create one endpoint per platform
         endpoint.platforms.forEach(platform => {
           expandedEndpoints.push({
             ...endpoint,
-            platform,          // Single platform string
-            _originalFormat: 'platforms_array' // For debugging
+            platform,
+            _originalFormat: 'platforms_array'
           });
         });
+        console.log(`  ✅ Expanded for platforms: ${endpoint.platforms.join(', ')}`);
       } 
-      // Handle endpoints with single platform
+      // If endpoint has single platform, use it
       else if (endpoint.platform) {
         expandedEndpoints.push({
           ...endpoint,
-          _originalFormat: 'single_platform' // For debugging
+          _originalFormat: 'single_platform'
         });
+        console.log(`  ✅ Single platform: ${endpoint.platform}`);
       }
-      // Handle invalid endpoints that somehow got here
+      // If no platform specified, expand for all available platforms
+      else if (availablePlatforms.length > 0) {
+        availablePlatforms.forEach(platform => {
+          expandedEndpoints.push({
+            ...endpoint,
+            platform,
+            _originalFormat: 'auto_expanded'
+          });
+        });
+        console.log(`  ✅ Auto-expanded for platforms: ${availablePlatforms.join(', ')}`);
+      }
+      // Fallback: create for default platform 'i'
       else {
-        console.warn(`Skipping invalid endpoint without platform: ${endpoint.key}`);
+        expandedEndpoints.push({
+          ...endpoint,
+          platform: 'i',
+          _originalFormat: 'fallback_default'
+        });
+        console.log(`  ⚠️ Fallback to default platform: i`);
       }
     });
     
     // Replace with expanded endpoints
     normalizedConfig.endpoints = expandedEndpoints;
+    console.log(`📊 [EXPANSION] Expanded ${config.endpoints.length} endpoints to ${expandedEndpoints.length} platform-specific endpoints`);
   }
   
   // Ensure headers exist
@@ -624,17 +666,44 @@ function normalizeConfig(config) {
     normalizedConfig.ids = {};
   }
   
-  // If no jobs but we have endpoints, create a default job structure
+  // If no jobs but we have endpoints, create platform-specific jobs
   if (!normalizedConfig.jobs && normalizedConfig.endpoints && normalizedConfig.endpoints.length > 0) {
-    const endpointKeys = normalizedConfig.endpoints.map(ep => ep.key);
-    normalizedConfig.jobs = [{
-      name: 'API Comparison',
-      platform: 'i', // Default platform
-      ignorePaths: [],
-      retryPolicy: { retries: 3, delayMs: 1000 },
-      endpointsToRun: endpointKeys
-    }];
-    console.log(`Created default job in normalizeConfig for ${normalizedConfig.endpoints.length} endpoints`);
+    console.log('🚀 [JOB-CREATION] Creating default jobs for each platform...');
+    
+    // Group endpoints by platform
+    const endpointsByPlatform = {};
+    normalizedConfig.endpoints.forEach(endpoint => {
+      const platform = endpoint.platform || 'i';
+      if (!endpointsByPlatform[platform]) {
+        endpointsByPlatform[platform] = [];
+      }
+      endpointsByPlatform[platform].push(endpoint.key);
+    });
+    
+    // Create a job for each platform
+    normalizedConfig.jobs = [];
+    Object.keys(endpointsByPlatform).forEach(platform => {
+      const platformName = {
+        'i': 'iOS',
+        'a': 'Android', 
+        'm': 'Mobile Web',
+        'w': 'Desktop Web'
+      }[platform] || platform;
+      
+      normalizedConfig.jobs.push({
+        id: `default-${platform}`,
+        name: `${platformName} API Comparison`,
+        platform: platform,
+        ignorePaths: [],
+        retryPolicy: { retries: 3, delayMs: 1000 },
+        endpointPairs: endpointsByPlatform[platform],
+        endpointsToRun: endpointsByPlatform[platform]
+      });
+      
+      console.log(`  ✅ Created job for ${platformName} (${platform}) with ${endpointsByPlatform[platform].length} endpoints`);
+    });
+    
+    console.log(`🎆 [JOB-SUMMARY] Created ${normalizedConfig.jobs.length} platform-specific jobs for ${normalizedConfig.endpoints.length} endpoints`);
   }
   
   return normalizedConfig;

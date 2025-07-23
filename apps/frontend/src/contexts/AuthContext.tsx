@@ -23,10 +23,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const storedName = localStorage.getItem('cbz-qa-name');
     const storedRole = localStorage.getItem('cbz-user-role') as UserRole;
-    if (storedName) {
+    
+    // CORE FIX: Prevent "QA Engineer" from being used as an actual name
+    // If stored name is a role instead of a person's name, clear it
+    if (storedName && storedName !== 'QA Engineer' && storedName !== 'Developer' && storedName !== 'Manager') {
       setQaName(storedName);
       setUserRole(storedRole || 'QA Engineer');
       setIsAuthenticated(true);
+      console.log(`🔐 [AUTH] Restored user: ${storedName} (${storedRole || 'QA Engineer'})`);
+    } else {
+      // Clear corrupted/invalid data and force re-login
+      if (storedName) {
+        console.warn(`⚠️ [AUTH] Invalid name "${storedName}" found in localStorage. Clearing and forcing re-login.`);
+        localStorage.removeItem('cbz-qa-name');
+        localStorage.removeItem('cbz-user-role');
+      }
+      setIsAuthenticated(false);
     }
     setIsLoading(false); // Authentication check complete
   }, []);

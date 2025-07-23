@@ -118,48 +118,82 @@ export default function UniversalMonacoDiffViewer({
   const formattedLeftData = useMemo(() => formatJson(leftData), [leftData]);
   const formattedRightData = useMemo(() => formatJson(rightData), [rightData]);
 
-  // Fixed Monaco Editor cleanup to prevent disposal errors
+  // Robust Monaco Editor lifecycle management to prevent disposal errors
   useEffect(() => {
     return () => {
-      // Cleanup Monaco Editor properly
+      // Comprehensive Monaco Editor cleanup
       if (editorRef.current) {
         try {
-          // For DiffEditor, we need to dispose both models and the editor
           const editor = editorRef.current;
           
-          // Check if it's a DiffEditor (has getOriginalEditor method)
+          // Handle DiffEditor cleanup
           if (editor.getOriginalEditor && editor.getModifiedEditor) {
-            // DiffEditor cleanup
-            const originalModel = editor.getOriginalEditor().getModel();
-            const modifiedModel = editor.getModifiedEditor().getModel();
+            const originalEditor = editor.getOriginalEditor();
+            const modifiedEditor = editor.getModifiedEditor();
             
-            // Dispose models first
-            if (originalModel && !originalModel.isDisposed()) {
-              originalModel.dispose();
+            // Get models before any disposal
+            const originalModel = originalEditor?.getModel?.();
+            const modifiedModel = modifiedEditor?.getModel?.();
+            
+            // Clear editor references first to prevent further operations
+            editorRef.current = null;
+            
+            // Dispose editors in correct order (child editors first)
+            if (originalEditor && typeof originalEditor.dispose === 'function') {
+              originalEditor.dispose();
             }
-            if (modifiedModel && !modifiedModel.isDisposed()) {
-              modifiedModel.dispose();
+            if (modifiedEditor && typeof modifiedEditor.dispose === 'function') {
+              modifiedEditor.dispose();
             }
             
-            // Then dispose the editor
-            if (editor.dispose && typeof editor.dispose === 'function') {
+            // Then dispose the diff editor
+            if (typeof editor.dispose === 'function') {
               editor.dispose();
             }
-          } else if (editor.getModel) {
-            // Regular Editor cleanup
-            const model = editor.getModel();
-            if (model && !model.isDisposed()) {
-              model.dispose();
-            }
-            if (editor.dispose && typeof editor.dispose === 'function') {
+            
+            // Finally dispose models if they still exist and aren't already disposed
+            setTimeout(() => {
+              try {
+                if (originalModel && !originalModel.isDisposed?.() && typeof originalModel.dispose === 'function') {
+                  originalModel.dispose();
+                }
+                if (modifiedModel && !modifiedModel.isDisposed?.() && typeof modifiedModel.dispose === 'function') {
+                  modifiedModel.dispose();
+                }
+              } catch (modelError: unknown) {
+                // Models may already be disposed - this is expected
+                const errorMessage = modelError instanceof Error ? modelError.message : String(modelError);
+                console.debug('Monaco model cleanup (expected):', errorMessage);
+              }
+            }, 0);
+          } else {
+            // Handle regular Editor cleanup
+            const model = editor.getModel?.();
+            
+            // Clear reference first
+            editorRef.current = null;
+            
+            // Dispose editor
+            if (typeof editor.dispose === 'function') {
               editor.dispose();
+            }
+            
+            // Dispose model if it exists
+            if (model && !model.isDisposed?.() && typeof model.dispose === 'function') {
+              setTimeout(() => {
+                try {
+                  model.dispose();
+                } catch (modelError: unknown) {
+                  const errorMessage = modelError instanceof Error ? modelError.message : String(modelError);
+                  console.debug('Monaco model cleanup (expected):', errorMessage);
+                }
+              }, 0);
             }
           }
-        } catch (error) {
-          // Log disposal errors for debugging but don't throw
-          console.debug('Monaco Editor cleanup (safe to ignore):', error instanceof Error ? error.message : String(error));
-        } finally {
-          // Clear the ref
+        } catch (error: unknown) {
+          // Log but don't throw - cleanup errors shouldn't break the app
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.debug('Monaco Editor cleanup (non-critical):', errorMessage);
           editorRef.current = null;
         }
       }
@@ -167,30 +201,47 @@ export default function UniversalMonacoDiffViewer({
   }, []);
 
   const handleEditorDidMount = (editor: any) => {
-    // Clean up any existing editor before setting new one
-    if (editorRef.current && editorRef.current !== editor) {
-      try {
-        const oldEditor = editorRef.current;
-        if (oldEditor.getOriginalEditor && oldEditor.getModifiedEditor) {
-          // DiffEditor cleanup
-          const originalModel = oldEditor.getOriginalEditor().getModel();
-          const modifiedModel = oldEditor.getModifiedEditor().getModel();
-          if (originalModel && !originalModel.isDisposed()) originalModel.dispose();
-          if (modifiedModel && !modifiedModel.isDisposed()) modifiedModel.dispose();
-        } else if (oldEditor.getModel) {
-          // Regular Editor cleanup
-          const model = oldEditor.getModel();
-          if (model && !model.isDisposed()) model.dispose();
-        }
-        if (oldEditor.dispose && typeof oldEditor.dispose === 'function') {
-          oldEditor.dispose();
-        }
-      } catch (error) {
-        console.debug('Previous editor cleanup:', error);
-      }
-    }
-    
+    // Store editor reference safely
     editorRef.current = editor;
+    
+    // Configure Monaco Editor for better performance and dark mode
+    try {
+      
+      // Configure editor options with error handling
+      if (editor && typeof editor.updateOptions === 'function') {
+        editor.updateOptions({
+          readOnly: true,
+          minimap: { enabled: true },
+          wordWrap: 'on',
+          scrollBeyondLastLine: false,
+          fontSize: 12,
+          lineNumbers: 'on',
+          folding: true,
+          renderSideBySide: true,
+          ignoreTrimWhitespace: false,
+          renderWhitespace: 'boundary',
+          // Add stability options
+          automaticLayout: true,
+          scrollbar: {
+            vertical: 'auto',
+            horizontal: 'auto'
+          }
+        });
+      }
+      
+      // Add error handler for editor
+      if (editor && typeof editor.onDidDispose === 'function') {
+        editor.onDidDispose(() => {
+          if (editorRef.current === editor) {
+            editorRef.current = null;
+          }
+        });
+      }
+      
+    } catch (error) {
+      console.warn('Monaco Editor configuration warning:', error);
+      // Don't throw - continue with default configuration
+    }
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -407,26 +458,29 @@ export default function UniversalMonacoDiffViewer({
                 theme={isDarkMode() ? 'vs-dark' : 'vs'}
                 options={{
                   readOnly: true,
-                  renderSideBySide: true,
-                  scrollBeyondLastLine: false,
                   minimap: { enabled: true },
                   wordWrap: 'on',
+                  scrollBeyondLastLine: false,
                   fontSize: 12,
                   lineNumbers: 'on',
                   folding: true,
-                  contextmenu: true,
-                  selectOnLineNumbers: true,
-                  automaticLayout: true,
-                  renderOverviewRuler: true,
-                  diffWordWrap: 'on',
+                  renderSideBySide: true,
                   ignoreTrimWhitespace: false,
                   renderWhitespace: 'boundary',
-                  hideUnchangedRegions: {
-                    enabled: showOnlyDifferences,
-                    minimumLineCount: 3,
-                    contextLineCount: 3
+                  automaticLayout: true,
+                  scrollbar: {
+                    vertical: 'auto',
+                    horizontal: 'auto'
                   },
-                  renderIndicators: true
+                  hideUnchangedRegions: {
+                    enabled: showOnlyDifferences
+                  },
+                  // Stability and performance options
+                  glyphMargin: false,
+                  lineDecorationsWidth: 10,
+                  lineNumbersMinChars: 3,
+                  overviewRulerBorder: false,
+                  hideCursorInOverviewRuler: true
                 }}
                 onMount={handleEditorDidMount}
               />
@@ -447,10 +501,10 @@ export default function UniversalMonacoDiffViewer({
                   className="text-center py-12"
                 >
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-green-700 dark:text-green-300 mb-2">
+                  <h3 className="text-lg font-medium text-green-700 dark:text-green-300 mb-2">
                     🎉 Perfect Match!
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     The JSON objects are completely identical
                   </p>
                 </motion.div>
