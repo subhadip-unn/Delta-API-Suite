@@ -5,11 +5,8 @@ import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import './global.css';
 
-// Lazy load all page components for optimal bundle splitting
+// Lazy load essential page components only
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Config = lazy(() => import('./pages/Config'));
-const Reports = lazy(() => import('./pages/Reports'));
-const Report = lazy(() => import('./pages/ReportFixed'));
 const JsonDiffTool = lazy(() => import('./pages/JsonDiffTool'));
 const Login = lazy(() => import('./pages/Login'));
 
@@ -21,8 +18,6 @@ const PageLoader = () => (
   </div>
 );
 
-
-
 function App() {
   const { isAuthenticated } = useAuth();
   
@@ -31,24 +26,21 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public routes */}
-          <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/deltapro" replace />} />
           
-          {/* Protected routes */}
+          {/* Protected routes - Focused on DeltaPro+ */}
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/config" element={<Config />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/report/:reportId" element={<Report />} />
               <Route path="/upload" element={<div>Upload Report Page</div>} />
-              <Route path="/json-diff" element={<JsonDiffTool />} />
+              <Route path="/deltapro" element={<JsonDiffTool />} />
             </Route>
           </Route>
           
-          {/* Root redirect */}
+          {/* Root redirect - Now goes to Dashboard for API management */}
           <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
           
-          {/* Catch all - redirect to dashboard or login */}
+          {/* Catch all - redirect to Dashboard or login */}
           <Route path="*" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         </Routes>
       </Suspense>

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import UniversalMonacoDiffViewer from '@/components/shared/UniversalMonacoDiffViewer';
+import { indexedDBService, APIConfig } from '@/services/indexedDB';
 // Types for the working comparison logic
 interface DiffItem {
   path: string;
@@ -45,7 +46,8 @@ import {
   Zap,
   Eye,
   EyeOff,
-  Info
+  Info,
+  Database
 } from 'lucide-react';
 
 interface ApiEndpoint {
@@ -65,52 +67,30 @@ interface ApiEndpoint {
 
 const STORAGE_KEY = 'deltapro-endpoint-configs';
 
-// Load saved configurations from localStorage
-const loadSavedConfigs = (): { left: Partial<ApiEndpoint>, right: Partial<ApiEndpoint> } => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        left: parsed.left || {},
-        right: parsed.right || {}
-      };
+  // Load saved configurations from localStorage
+  const loadLocalStorageConfigs = (): { left: Partial<ApiEndpoint>, right: Partial<ApiEndpoint> } => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          left: parsed.left || {},
+          right: parsed.right || {}
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to load saved configurations:', error);
     }
-  } catch (error) {
-    console.warn('Failed to load saved configurations:', error);
-  }
-  return { left: {}, right: {} };
-};
+    return { left: {}, right: {} };
+  };
 
-// Save configurations to localStorage
-const saveConfigs = (left: ApiEndpoint, right: ApiEndpoint) => {
-  try {
-    const configToSave = {
-      left: {
-        name: left.name,
-        baseUrl: left.baseUrl,
-        endpoint: left.endpoint,
-        headers: left.headers
-      },
-      right: {
-        name: right.name,
-        baseUrl: right.baseUrl,
-        endpoint: right.endpoint,
-        headers: right.headers
-      },
-      savedAt: new Date().toISOString()
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(configToSave));
-  } catch (error) {
-    console.warn('Failed to save configurations:', error);
-  }
-};
+
 
 export default function JsonDiffTool() {
   const { toast } = useToast();
   
   // Load saved configurations on component mount
-  const savedConfigs = loadSavedConfigs();
+  const savedConfigs = loadLocalStorageConfigs();
   
   const [leftEndpoint, setLeftEndpoint] = useState<ApiEndpoint>({
     id: 'left',
@@ -134,12 +114,61 @@ export default function JsonDiffTool() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [isComparing, setIsComparing] = useState(false);
   const [orderSensitive, setOrderSensitive] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showPlatformHeaders, setShowPlatformHeaders] = useState(false);
+  const [indexedDBConfigs, setIndexedDBConfigs] = useState<APIConfig[]>([]);
 
-  // Auto-save configurations when they change
+  // Auto-save configurations when they change (every 2 seconds)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      saveConfigs(leftEndpoint, rightEndpoint);
-    }, 1000); // Debounce saves by 1 second
+    const timeoutId = setTimeout(async () => {
+      try {
+        console.log('🔄 [AUTO-SAVE] Starting auto-save...', {
+          left: { baseUrl: leftEndpoint.baseUrl, endpoint: leftEndpoint.endpoint, hasData: !!(leftEndpoint.baseUrl && leftEndpoint.endpoint) },
+          right: { baseUrl: rightEndpoint.baseUrl, endpoint: rightEndpoint.endpoint, hasData: !!(rightEndpoint.baseUrl && rightEndpoint.endpoint) }
+        });
+
+        let savedCount = 0;
+
+        // Auto-save both endpoints to IndexedDB
+        if (leftEndpoint.baseUrl && leftEndpoint.endpoint) {
+          const leftConfig: Omit<APIConfig, 'id' | 'createdAt' | 'updatedAt'> = {
+            name: leftEndpoint.name || 'Live API',
+            url: `${leftEndpoint.baseUrl}/${leftEndpoint.endpoint}`,
+            method: 'GET',
+            headers: leftEndpoint.headers,
+            description: `Auto-saved: ${leftEndpoint.name || 'Live API'} configuration`,
+            tags: ['auto-saved', 'live-api', 'production']
+          };
+          const leftId = await indexedDBService.saveAPIConfig(leftConfig);
+          console.log('✅ [AUTO-SAVE] Left endpoint saved with ID:', leftId);
+          savedCount++;
+        }
+
+        if (rightEndpoint.baseUrl && rightEndpoint.endpoint) {
+          const rightConfig: Omit<APIConfig, 'id' | 'createdAt' | 'updatedAt'> = {
+            name: rightEndpoint.name || 'New API',
+            url: `${rightEndpoint.baseUrl}/${rightEndpoint.endpoint}`,
+            method: 'GET',
+            headers: rightEndpoint.headers,
+            description: `Auto-saved: ${rightEndpoint.name || 'New API'} configuration`,
+            tags: ['auto-saved', 'new-api', 'staging']
+          };
+          const rightId = await indexedDBService.saveAPIConfig(rightConfig);
+          console.log('✅ [AUTO-SAVE] Right endpoint saved with ID:', rightId);
+          savedCount++;
+        }
+
+        if (savedCount > 0) {
+          console.log(`🎉 [AUTO-SAVE] Successfully saved ${savedCount} configurations`);
+          // Refresh the list of saved configs
+          await loadSavedConfigs();
+        } else {
+          console.log('ℹ️ [AUTO-SAVE] No configurations to save (missing baseUrl or endpoint)');
+        }
+      } catch (error) {
+        console.error('❌ [AUTO-SAVE] Error during auto-save:', error);
+      }
+    }, 2000); // Auto-save every 2 seconds
     
     return () => clearTimeout(timeoutId);
   }, [leftEndpoint.name, leftEndpoint.baseUrl, leftEndpoint.endpoint, leftEndpoint.headers, 
@@ -185,7 +214,7 @@ export default function JsonDiffTool() {
       const fullUrl = `${endpoint.baseUrl.replace(/\/$/, '')}/${endpoint.endpoint.replace(/^\//, '')}`;
       
       // Use backend proxy to avoid CORS issues
-      const response = await fetch('/api/proxy-fetch', {
+              const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -235,6 +264,208 @@ export default function JsonDiffTool() {
       });
     }
   }, [toast]);
+
+  // Platform-specific default headers that users can load instantly
+  const platformHeaders = {
+    ios: {
+      'User-Agent': 'CBZ-iOS-App/1.0',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-Platform': 'ios',
+      'X-App-Version': '1.0.0',
+      'Accept-Language': 'en-US'
+    },
+    android: {
+      'User-Agent': 'CBZ-Android-App/1.0',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-Platform': 'android',
+      'X-App-Version': '1.0.0',
+      'Accept-Language': 'en-US'
+    },
+    web: {
+      'User-Agent': 'CBZ-Web-App/1.0',
+      'Accept': 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
+      'X-Platform': 'web',
+      'X-App-Version': '1.0.0',
+      'Accept-Language': 'en-US'
+    },
+    mobile: {
+      'User-Agent': 'CBZ-Mobile-Web/1.0',
+      'Accept': 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
+      'X-Platform': 'mobile',
+      'X-App-Version': '1.0.0',
+      'Accept-Language': 'en-US'
+    }
+  };
+
+  // Load platform-specific headers
+  const loadPlatformHeaders = useCallback((platform: keyof typeof platformHeaders, endpointId: 'left' | 'right') => {
+    const headers = platformHeaders[platform];
+    const updateEndpoint = endpointId === 'left' ? setLeftEndpoint : setRightEndpoint;
+    
+    updateEndpoint(prev => ({
+      ...prev,
+      headers: { ...prev.headers, ...headers }
+    }));
+
+    toast({
+      title: "✅ Headers Loaded",
+      description: `${platform.toUpperCase()} headers loaded for ${endpointId === 'left' ? 'Live API' : 'New API'}`,
+    });
+  }, [toast]);
+
+  const loadSavedConfigs = useCallback(async () => {
+    try {
+      const configs = await indexedDBService.getAllAPIConfigs();
+      setIndexedDBConfigs(configs);
+    } catch (error) {
+      console.error('Failed to load saved configs:', error);
+    }
+  }, []);
+
+  const handleLoadConfig = useCallback(async (config: APIConfig) => {
+    try {
+      const urlParts = config.url.split('/');
+      const baseUrl = urlParts.slice(0, -1).join('/');
+      const endpoint = urlParts[urlParts.length - 1];
+
+      if (config.name.includes('Live API')) {
+        setLeftEndpoint(prev => ({
+          ...prev,
+          baseUrl,
+          endpoint,
+          headers: config.headers
+        }));
+      } else if (config.name.includes('New API')) {
+        setRightEndpoint(prev => ({
+          ...prev,
+          baseUrl,
+          endpoint,
+          headers: config.headers
+        }));
+      }
+
+      setShowLoadModal(false);
+      toast({
+        title: "✅ Configuration Loaded",
+        description: `Loaded ${config.name}`,
+      });
+    } catch (error) {
+      toast({
+        title: "❌ Load Failed",
+        description: "Failed to load configuration",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  // Load saved configs on component mount
+  useEffect(() => {
+    loadSavedConfigs();
+  }, [loadSavedConfigs]);
+
+  // Load configuration from URL parameter (e.g., /deltapro?load=config-id)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const configId = urlParams.get('load');
+    
+    if (configId) {
+      loadConfigById(configId);
+    }
+  }, []);
+
+  const loadConfigById = async (configId: string) => {
+    try {
+      const config = await indexedDBService.getAPIConfig(configId);
+      if (config) {
+        const urlParts = config.url.split('/');
+        const baseUrl = urlParts.slice(0, -1).join('/');
+        const endpoint = urlParts[urlParts.length - 1];
+
+        if (config.name.includes('Live API') || config.tags.includes('live-api')) {
+          setLeftEndpoint(prev => ({
+            ...prev,
+            baseUrl,
+            endpoint,
+            headers: config.headers
+          }));
+        } else if (config.name.includes('New API') || config.tags.includes('new-api')) {
+          setRightEndpoint(prev => ({
+            ...prev,
+            baseUrl,
+            endpoint,
+            headers: rightEndpoint.headers
+          }));
+        }
+
+        toast({
+          title: "✅ Configuration Loaded",
+          description: `Loaded ${config.name} from Dashboard`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load config by ID:', error);
+    }
+  };
+
+  // Manual save function as fallback
+  const handleManualSave = async () => {
+    try {
+      let savedCount = 0;
+
+      if (leftEndpoint.baseUrl && leftEndpoint.endpoint) {
+        const leftConfig: Omit<APIConfig, 'id' | 'createdAt' | 'updatedAt'> = {
+          name: leftEndpoint.name || 'Live API',
+          url: `${leftEndpoint.baseUrl}/${leftEndpoint.endpoint}`,
+          method: 'GET',
+          headers: leftEndpoint.headers,
+          description: `Manual save: ${leftEndpoint.name || 'Live API'} configuration`,
+          tags: ['manual-save', 'live-api', 'production']
+        };
+        const leftId = await indexedDBService.saveAPIConfig(leftConfig);
+        console.log('✅ [MANUAL-SAVE] Left endpoint saved with ID:', leftId);
+        savedCount++;
+      }
+
+      if (rightEndpoint.baseUrl && rightEndpoint.endpoint) {
+        const rightConfig: Omit<APIConfig, 'id' | 'createdAt' | 'updatedAt'> = {
+          name: rightEndpoint.name || 'New API',
+          url: `${rightEndpoint.baseUrl}/${rightEndpoint.endpoint}`,
+          method: 'GET',
+          headers: rightEndpoint.headers,
+          description: `Manual save: ${rightEndpoint.name || 'New API'} configuration`,
+          tags: ['manual-save', 'new-api', 'staging']
+        };
+        const rightId = await indexedDBService.saveAPIConfig(rightConfig);
+        console.log('✅ [MANUAL-SAVE] Right endpoint saved with ID:', rightId);
+        savedCount++;
+      }
+
+      if (savedCount > 0) {
+        toast({
+          title: "✅ Manual Save Successful",
+          description: `Saved ${savedCount} configuration(s)`,
+        });
+        await loadSavedConfigs();
+      } else {
+        toast({
+          title: "⚠️ No Configurations to Save",
+          description: "Please enter both base URL and endpoint for at least one API",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('❌ [MANUAL-SAVE] Error:', error);
+      toast({
+        title: "❌ Manual Save Failed",
+        description: "Failed to save configurations",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Deep equality check for objects (order-insensitive)
   const deepEqual = (obj1: any, obj2: any): boolean => {
@@ -634,8 +865,8 @@ export default function JsonDiffTool() {
               Secure
             </Badge>
             <Badge variant="secondary" className="px-3 py-1">
-              <RefreshCw className="w-3 h-3 mr-1" />
-              No Storage
+              <Database className="w-3 h-3 mr-1" />
+              Auto-Save
             </Badge>
           </div>
           
@@ -692,6 +923,36 @@ export default function JsonDiffTool() {
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               {orderSensitive ? 'Order Sensitive' : 'Order Insensitive'}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLoadModal(true)}
+              className="border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              Load Config
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPlatformHeaders(true)}
+              className="border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-950"
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Platform Headers
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualSave}
+              className="border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Manual Save
             </Button>
           </div>
         </motion.div>
@@ -887,6 +1148,143 @@ export default function JsonDiffTool() {
               rightTitle={rightEndpoint.name}
               modalMode={false}
             />
+          </motion.div>
+        )}
+
+        {/* Load Config Modal */}
+        {showLoadModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowLoadModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Load Saved Configuration</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowLoadModal(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              {indexedDBConfigs.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">No saved configurations found.</p>
+                  <p className="text-sm text-muted-foreground">Save a configuration first to load it here.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {indexedDBConfigs.map((config) => (
+                    <div
+                      key={config.id}
+                      className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => handleLoadConfig(config)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">{config.name}</h4>
+                          <p className="text-sm text-muted-foreground">{config.url}</p>
+                          <div className="flex gap-2 mt-2">
+                            {config.tags.map((tag, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          Load
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Platform Headers Modal */}
+        {showPlatformHeaders && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowPlatformHeaders(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Platform Headers</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPlatformHeaders(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Choose platform-specific headers to load instantly. These will be merged with your existing headers.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {Object.entries(platformHeaders).map(([platform, headers]) => (
+                    <div key={platform} className="space-y-3">
+                      <h4 className="font-medium capitalize">{platform}</h4>
+                      <div className="space-y-2">
+                        {Object.entries(headers).map(([key, value]) => (
+                          <div key={key} className="text-xs text-muted-foreground">
+                            <span className="font-mono">{key}:</span> {value}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            loadPlatformHeaders(platform as keyof typeof platformHeaders, 'left');
+                            setShowPlatformHeaders(false);
+                          }}
+                        >
+                          Load to Live API
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            loadPlatformHeaders(platform as keyof typeof platformHeaders, 'right');
+                            setShowPlatformHeaders(false);
+                          }}
+                        >
+                          Load to New API
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </div>

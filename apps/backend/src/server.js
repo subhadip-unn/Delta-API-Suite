@@ -2,8 +2,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const { runAllJobs } = require('./comparator');
-const { getIndianTimestamp, normalizeConfig } = require('./utils');
+const { getIndianTimestamp } = require('./utils');
 
 const app = express();
 const PORT = 3001;
@@ -18,82 +17,64 @@ let currentReport = null;
 const reportsStore = new Map(); // Map<reportId, reportData>
 
 /**
- * POST /api/compare
- * Runs the API comparison with the provided config
+ * POST /api/proxy
+ * Proxy endpoint for external API calls to avoid CORS issues
+ * This is the core endpoint used by DeltaPro+ for API comparison
  */
-app.post('/api/compare', async (req, res) => {
+app.post('/api/proxy', async (req, res) => {
   try {
-    const { config, qaName, options = {} } = req.body;
-    // Debug: Log what was received from frontend
-    console.log('[DEBUG] Received at /api/compare:', { config, qaName, options });
+    const { url, method = 'GET', headers = {}, body } = req.body;
     
-    if (!config) {
-      return res.status(400).json({ success: false, error: 'Missing config data' });
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing URL parameter'
+      });
     }
     
-    if (!qaName) {
-      return res.status(400).json({ success: false, error: 'Missing QA name' });
-    }
+    console.log(`[PROXY] ${method} ${url}`);
     
-    // Log the start of comparison
-    console.log(`Starting comparison for ${qaName}`);
+    // Import fetch dynamically (for Node.js compatibility)
+    const fetch = (await import('node-fetch')).default;
     
-    // Generate timestamp for this report
-    const { folderTs, humanTs } = getIndianTimestamp();
-    
-    // Normalize the config to ensure compatibility between frontend and backend
-    console.log('🔧 [SERVER] Normalizing config to ensure platform compatibility...');
-    console.log('📥 [SERVER] Received config structure:', {
-      endpoints: config.endpoints?.length || 0,
-      jobs: config.jobs?.length || 0,
-      headers: Object.keys(config.headers || {}).length,
-      ids: Object.keys(config.ids || {}).length
-    });
-    
-    const normalizedConfig = normalizeConfig(config);
-    console.log(`✅ [SERVER] Normalized ${config.endpoints?.length || 0} endpoints into ${normalizedConfig.endpoints?.length || 0} platform-specific endpoints`);
-    console.log('📊 [SERVER] Normalized config jobs:', normalizedConfig.jobs?.length || 0);
-    
-    // Run the comparison with normalized config
-    const startTime = Date.now();
-    console.log('🚀 [SERVER] Starting runAllJobs with qaName:', qaName);
-    const reportData = await runAllJobs(normalizedConfig, qaName);
-    const elapsedMs = Date.now() - startTime;
-    
-    console.log('📈 [SERVER] Report data generated:', {
-      totalTasks: reportData.totalTasks,
-      endpoints: reportData.endpoints?.length || 0,
-      jobs: reportData.jobs?.length || 0,
-      testEngineer: reportData.testEngineer
-    });
-    
-    // Add metadata to the report
-    const completeReport = {
-      ...reportData,
-      timestamp: humanTs,
-      duration: elapsedMs,
-      options
+    const fetchOptions = {
+      method,
+      headers: {
+        'User-Agent': 'CBZ-API-Delta-Tool/1.0',
+        ...headers
+      }
     };
     
-    // Store the report in memory only
-    currentReport = completeReport;
-    reportsStore.set(folderTs, completeReport);
+    if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+      fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+      if (!fetchOptions.headers['Content-Type']) {
+        fetchOptions.headers['Content-Type'] = 'application/json';
+      }
+    }
     
-    console.log(`Report ${folderTs} stored in memory. Total reports in memory: ${reportsStore.size}`);
+    const response = await fetch(url, fetchOptions);
+    const responseText = await response.text();
     
-    // Return success to client with report ID
-    return res.json({ 
-      success: true, 
-      reportId: folderTs,
-      timestamp: humanTs,
-      duration: elapsedMs,
-      message: 'Comparison completed successfully'
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      responseData = responseText;
+    }
+    
+    res.json({
+      success: true,
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      data: responseData
     });
+    
   } catch (error) {
-    console.error('Error running comparison:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: error.message || 'An unknown error occurred'
+    console.error('[PROXY] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Proxy request failed'
     });
   }
 });
@@ -212,65 +193,16 @@ app.post('/api/upload-report', (req, res) => {
 });
 
 /**
- * POST /api/proxy-fetch
- * Proxy endpoint for external API calls to avoid CORS issues
+ * GET /api/status
+ * Health check endpoint
  */
-app.post('/api/proxy-fetch', async (req, res) => {
-  try {
-    const { url, method = 'GET', headers = {}, body } = req.body;
-    
-    if (!url) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing URL parameter'
-      });
-    }
-    
-    console.log(`[PROXY] ${method} ${url}`);
-    
-    // Import fetch dynamically (for Node.js compatibility)
-    const fetch = (await import('node-fetch')).default;
-    
-    const fetchOptions = {
-      method,
-      headers: {
-        'User-Agent': 'CBZ-API-Delta-Tool/1.0',
-        ...headers
-      }
-    };
-    
-    if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-      fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
-      if (!fetchOptions.headers['Content-Type']) {
-        fetchOptions.headers['Content-Type'] = 'application/json';
-      }
-    }
-    
-    const response = await fetch(url, fetchOptions);
-    const responseText = await response.text();
-    
-    let responseData;
-    try {
-      responseData = JSON.parse(responseText);
-    } catch (e) {
-      responseData = responseText;
-    }
-    
-    res.json({
-      success: true,
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries()),
-      data: responseData
-    });
-    
-  } catch (error) {
-    console.error('[PROXY] Error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Proxy request failed'
-    });
-  }
+app.get('/api/status', (req, res) => {
+  res.json({ 
+    success: true, 
+    status: 'running',
+    service: 'CBZ API Delta Backend',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start the server

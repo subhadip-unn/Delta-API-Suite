@@ -5,8 +5,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
-  Home,
-  Settings,
   FileText,
   Upload,
   GitCompare,
@@ -15,10 +13,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
-  Activity,
   LogOut,
   UserCog,
-  HelpCircle
+  HelpCircle,
+  Database
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { DocumentationModal } from '@/components/modals/DocumentationModal';
@@ -128,12 +126,8 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
     return () => window.removeEventListener('scroll', requestTick);
   }, [isCollapsed, isHovered, isManuallyCollapsed, onCollapseChange]);
 
-  // Navigation items
+  // Navigation items - Focused on DeltaPro+ core functionality
   const navigationItems = [
-    { icon: Home, label: 'Dashboard', to: '/dashboard', description: 'Overview and metrics' },
-    { icon: Settings, label: 'Config', to: '/config', description: 'API configuration' },
-    { icon: FileText, label: 'Reports', to: '/reports', description: 'Test results' },
-    { icon: Upload, label: 'Upload Report', to: '/upload', description: 'Import test data' },
     { 
       icon: () => (
         <div className="relative">
@@ -142,9 +136,11 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
         </div>
       ), 
       label: 'DeltaPro+', 
-      to: '/json-diff', 
-      description: 'Advanced JSON comparison' 
+      to: '/deltapro', 
+      description: 'Advanced JSON comparison tool' 
     },
+    { icon: Database, label: 'Dashboard', to: '/dashboard', description: 'API management & organization' },
+    { icon: Upload, label: 'Upload Report', to: '/upload', description: 'Import test data' },
     { icon: HelpCircle, label: 'Documentation', to: '/docs', description: 'Help and guides' },
   ];
 
@@ -438,7 +434,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
                     className="cursor-pointer"
                     onClick={() => setShowActivityLog(true)}
                   >
-                    <Activity className="mr-2 h-4 w-4" />
+                    <FileText className="mr-2 h-4 w-4" />
                     Activity Log
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

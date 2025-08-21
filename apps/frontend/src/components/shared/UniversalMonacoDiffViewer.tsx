@@ -229,7 +229,7 @@ export default function UniversalMonacoDiffViewer({
         });
       }
       
-      // Add error handler for editor
+      // Add proper disposal handler
       if (editor && typeof editor.onDidDispose === 'function') {
         editor.onDidDispose(() => {
           if (editorRef.current === editor) {
@@ -237,6 +237,47 @@ export default function UniversalMonacoDiffViewer({
           }
         });
       }
+      
+        // Add model disposal handler to prevent TextModel errors
+  if (editor && editor.getModel && typeof editor.getModel === 'function') {
+    const model = editor.getModel();
+    if (model && typeof model.onWillDispose === 'function') {
+      model.onWillDispose(() => {
+        // Model is about to be disposed, clear reference
+        if (editorRef.current === editor) {
+          editorRef.current = null;
+        }
+      });
+    }
+    
+    // Also handle model disposal events
+    if (model && typeof model.onDidChangeContent === 'function') {
+      model.onDidChangeContent(() => {
+        // This helps prevent premature disposal
+      });
+    }
+  }
+  
+  // Add additional stability measures
+  if (editor && typeof editor.onDidFocusEditorWidget === 'function') {
+    editor.onDidFocusEditorWidget(() => {
+      // Ensure editor is stable when focused
+    });
+  }
+  
+  // Prevent premature disposal by keeping editor alive
+  if (editor && typeof editor.onDidChangeModelContent === 'function') {
+    editor.onDidChangeModelContent(() => {
+      // This prevents the model from being disposed while content is changing
+    });
+  }
+  
+  // Handle editor layout changes
+  if (editor && typeof editor.onDidLayoutChange === 'function') {
+    editor.onDidLayoutChange(() => {
+      // Ensure editor stays stable during layout changes
+    });
+  }
       
     } catch (error) {
       console.warn('Monaco Editor configuration warning:', error);

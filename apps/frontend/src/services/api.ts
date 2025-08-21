@@ -68,18 +68,18 @@ const axios = {
     };
   }
 };
-import { ConfigState } from '../types/config';
+
 
 // Use relative URL for API calls - this works with the Vite proxy in development
 // and will work properly in production with proper deployment configuration
 const API_URL = '/api';  // Proxy will handle this in development
 
-export interface CompareResponse {
+export interface ProxyResponse {
   success: boolean;
-  reportId?: string;
-  timestamp?: string;
-  duration?: number;
-  message?: string;
+  status?: number;
+  statusText?: string;
+  headers?: any;
+  data?: any;
   error?: string;
 }
 
@@ -101,23 +101,25 @@ export interface ReportResponse {
 }
 
 export const apiService = {
-  runComparison: async (config: ConfigState, qaName: string, options = {}): Promise<CompareResponse> => {
+  // Core proxy function for DeltaPro+ API comparison
+  proxyFetch: async (url: string, method: string = 'GET', headers: any = {}, body?: any): Promise<any> => {
     try {
-      // Debug: Log payload being sent to backend
-      console.log('[DEBUG] Sending to /api/compare:', { config, qaName, options });
-      const response = await axios.post(`${API_URL}/compare`, {
-        config,
-        qaName,
-        options
+      const response = await axios.post(`${API_URL}/proxy`, {
+        url,
+        method,
+        headers,
+        body
       });
       return response.data;
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || error.message || 'Unknown error'
+        error: error.response?.data?.error || error.message || 'Proxy request failed'
       };
     }
   },
+  
+  // Archive functions for DeltaPro+ comparison history
   getReports: async (): Promise<ReportListResponse> => {
     try {
       const response = await axios.get(`${API_URL}/reports`);
@@ -129,6 +131,7 @@ export const apiService = {
       };
     }
   },
+  
   getReport: async (reportId: string): Promise<ReportResponse> => {
     try {
       const response = await axios.get(`${API_URL}/reports/${reportId}`);
@@ -140,7 +143,8 @@ export const apiService = {
       };
     }
   },
-  uploadReport: async (reportFile: string, qaName?: string): Promise<CompareResponse> => {
+  
+  uploadReport: async (reportFile: string, qaName?: string): Promise<ProxyResponse> => {
     try {
       const response = await axios.post(`${API_URL}/upload-report`, {
         reportFile,

@@ -32,7 +32,7 @@ export default function Login() {
     
     console.log(`🔐 [LOGIN] User logging in: ${trimmedName} as ${role}`);
     login(trimmedName, role);
-    navigate('/dashboard');
+            navigate('/dashboard');
   };
 
   return (
