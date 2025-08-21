@@ -95,7 +95,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-6">
       <div className="text-center py-8">
         <div className="flex items-center justify-center space-x-3 mb-4">
           <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">

@@ -66,6 +66,7 @@ interface ApiEndpoint {
 // Types now imported from unified diff engine
 
 const STORAGE_KEY = 'deltapro-endpoint-configs';
+const COMPARISON_STORAGE_KEY = 'deltapro-comparison-data';
 
   // Load saved configurations from localStorage
   const loadLocalStorageConfigs = (): { left: Partial<ApiEndpoint>, right: Partial<ApiEndpoint> } => {
@@ -82,6 +83,29 @@ const STORAGE_KEY = 'deltapro-endpoint-configs';
       console.warn('Failed to load saved configurations:', error);
     }
     return { left: {}, right: {} };
+  };
+
+  // Load complete comparison data including responses and results
+  const loadCompleteComparisonData = () => {
+    try {
+      const saved = localStorage.getItem(COMPARISON_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed;
+      }
+    } catch (error) {
+      console.warn('Failed to load comparison data:', error);
+    }
+    return null;
+  };
+
+  // Save complete comparison data
+  const saveCompleteComparisonData = (data: any) => {
+    try {
+      localStorage.setItem(COMPARISON_STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save comparison data:', error);
+    }
   };
 
 
@@ -121,6 +145,63 @@ export default function JsonDiffTool() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showPlatformHeaders, setShowPlatformHeaders] = useState(false);
   const [indexedDBConfigs, setIndexedDBConfigs] = useState<APIConfig[]>([]);
+
+  // Load complete comparison data on component mount
+  useEffect(() => {
+    const savedData = loadCompleteComparisonData();
+    if (savedData) {
+      if (savedData.left && savedData.left.response) {
+        setLeftEndpoint(prev => ({ ...prev, ...savedData.left }));
+      }
+      if (savedData.right && savedData.right.response) {
+        setRightEndpoint(prev => ({ ...prev, ...savedData.right }));
+      }
+      if (savedData.comparisonResult) {
+        setComparisonResult(savedData.comparisonResult);
+      }
+      if (savedData.orderSensitive !== undefined) {
+        setOrderSensitive(savedData.orderSensitive);
+      }
+    }
+  }, []);
+
+  // Auto-save complete comparison data when it changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      try {
+        // Save complete comparison data to localStorage
+        const completeData = {
+          left: {
+            baseUrl: leftEndpoint.baseUrl,
+            endpoint: leftEndpoint.endpoint,
+            headers: leftEndpoint.headers,
+            name: leftEndpoint.name,
+            response: leftEndpoint.response,
+            status: leftEndpoint.status,
+            responseTime: leftEndpoint.responseTime
+          },
+          right: {
+            baseUrl: rightEndpoint.baseUrl,
+            endpoint: rightEndpoint.endpoint,
+            headers: rightEndpoint.headers,
+            name: rightEndpoint.name,
+            response: rightEndpoint.response,
+            status: rightEndpoint.status,
+            responseTime: rightEndpoint.responseTime
+          },
+          comparisonResult,
+          orderSensitive
+        };
+        
+        saveCompleteComparisonData(completeData);
+        console.log('💾 [PERSISTENCE] Complete comparison data saved');
+      } catch (error) {
+        console.error('❌ [PERSISTENCE] Error saving comparison data:', error);
+      }
+    }, 1000); // Save every 1 second
+    
+    return () => clearTimeout(timeoutId);
+  }, [leftEndpoint, rightEndpoint, comparisonResult, orderSensitive]);
 
   // Auto-save configurations when they change (every 2 seconds)
   useEffect(() => {
@@ -844,7 +925,7 @@ export default function JsonDiffTool() {
   }, []);
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-6 pb-4">
+    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-6 pt-6">
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header Section */}
         <motion.div
