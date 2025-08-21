@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import './global.css';
 
 // Lazy load essential page components only
+const DeltaMetrics = lazy(() => import('./pages/DeltaMetrics'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const JsonDiffTool = lazy(() => import('./pages/JsonDiffTool'));
 const Login = lazy(() => import('./pages/Login'));
@@ -28,20 +29,20 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/deltapro" replace />} />
           
-          {/* Protected routes - Focused on DeltaPro+ */}
+          {/* Protected routes - Delta Suite */}
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
+              <Route path="/" element={<DeltaMetrics />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              
               <Route path="/deltapro" element={<JsonDiffTool />} />
             </Route>
           </Route>
           
-          {/* Root redirect - Now goes to Dashboard for API management */}
-          <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+          {/* Root redirect - Now goes to DeltaMetrics for landing page */}
+          <Route path="/" element={isAuthenticated ? <Navigate to="/" replace /> : <Navigate to="/login" replace />} />
           
-          {/* Catch all - redirect to Dashboard or login */}
-          <Route path="*" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+          {/* Catch all - redirect to DeltaMetrics or login */}
+          <Route path="*" element={isAuthenticated ? <Navigate to="/" replace /> : <Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
     </Router>

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   FileText,
-  Upload,
   GitCompare,
   Moon,
   Sun,
@@ -16,7 +15,8 @@ import {
   LogOut,
   UserCog,
   HelpCircle,
-  Database
+  Database,
+  BarChart3
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { DocumentationModal } from '@/components/modals/DocumentationModal';
@@ -126,8 +126,14 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
     return () => window.removeEventListener('scroll', requestTick);
   }, [isCollapsed, isHovered, isManuallyCollapsed, onCollapseChange]);
 
-  // Navigation items - Focused on DeltaPro+ core functionality
+  // Navigation items - Delta Suite
   const navigationItems = [
+    { 
+      icon: BarChart3, 
+      label: 'DeltaMetrics', 
+      to: '/', 
+      description: 'Dashboard & tool hub' 
+    },
     { 
       icon: () => (
         <div className="relative">
