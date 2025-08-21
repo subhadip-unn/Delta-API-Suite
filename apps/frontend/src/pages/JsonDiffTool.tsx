@@ -111,7 +111,11 @@ export default function JsonDiffTool() {
   });
 
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
-  const [showInstructions, setShowInstructions] = useState(true);
+  const [showInstructions, setShowInstructions] = useState(() => {
+    // Check if user has seen the guide before in this session
+    const hasSeenGuide = sessionStorage.getItem('deltapro-guide-hidden');
+    return hasSeenGuide !== 'true';
+  });
   const [isComparing, setIsComparing] = useState(false);
   const [orderSensitive, setOrderSensitive] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
@@ -173,6 +177,12 @@ export default function JsonDiffTool() {
     return () => clearTimeout(timeoutId);
   }, [leftEndpoint.name, leftEndpoint.baseUrl, leftEndpoint.endpoint, leftEndpoint.headers, 
       rightEndpoint.name, rightEndpoint.baseUrl, rightEndpoint.endpoint, rightEndpoint.headers]);
+
+  // Handle guide visibility with session persistence
+  const handleHideGuide = useCallback(() => {
+    setShowInstructions(false);
+    sessionStorage.setItem('deltapro-guide-hidden', 'true');
+  }, []);
 
   // Add header to endpoint
   const addHeader = useCallback((endpointId: string, key: string, value: string) => {
@@ -834,14 +844,14 @@ export default function JsonDiffTool() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 pt-4 px-6 pb-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center space-y-4"
+          className="text-center space-y-3"
         >
           <div className="flex items-center justify-center space-x-3">
             <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
@@ -871,7 +881,7 @@ export default function JsonDiffTool() {
           </div>
           
           {/* Action Buttons */}
-          <div className="flex items-center justify-center space-x-3 pt-2">
+          <div className="flex items-center justify-center space-x-3 pt-1">
             <Button
               variant="outline"
               size="sm"
@@ -909,7 +919,14 @@ export default function JsonDiffTool() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowInstructions(!showInstructions)}
+              onClick={() => {
+                if (showInstructions) {
+                  handleHideGuide();
+                } else {
+                  setShowInstructions(true);
+                  sessionStorage.removeItem('deltapro-guide-hidden');
+                }
+              }}
             >
               {showInstructions ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
               {showInstructions ? 'Hide Guide' : 'Show Guide'}
@@ -976,7 +993,7 @@ export default function JsonDiffTool() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setShowInstructions(false)}
+                      onClick={handleHideGuide}
                     >
                       <EyeOff className="w-4 h-4" />
                     </Button>
