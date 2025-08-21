@@ -41,7 +41,7 @@ export const DocumentationModal = ({ open, onOpenChange }: DocumentationModalPro
         <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mb-4">
           <GitCompare className="h-8 w-8 text-white" />
         </div>
-        <h2 className="text-2xl font-bold mb-2">CBZ API Delta Platform</h2>
+        <h2 className="text-2xl font-bold mb-2">Delta API Suite Platform</h2>
         <p className="text-muted-foreground max-w-md mx-auto">
           Professional API comparison and testing platform for quality assurance teams
         </p>

@@ -223,7 +223,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
               </div>
               {showLabels && (
                 <span className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  CBZ API Delta
+                  Delta API Suite
                 </span>
               )}
             </div>

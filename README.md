@@ -1,4 +1,4 @@
-# CBZ API Delta
+# Delta API Suite
 
 > **Professional API Comparison & Testing Platform**  
 > Advanced JSON diff analysis with intelligent order-insensitive comparison
@@ -10,7 +10,7 @@
 
 ## 🚀 Overview
 
-CBZ API Delta is a comprehensive API comparison and testing platform designed for QA engineers and developers. It provides two powerful tools for API analysis:
+Delta API Suite is a comprehensive API comparison and testing platform designed for QA engineers and developers. It provides powerful tools for API analysis:
 
 - **🔍 DeltaPro+**: Advanced single API comparison with intelligent diff analysis
 - **🏗️ DeltaBulkPro**: Bulk API testing across multiple platforms and environments
@@ -101,7 +101,7 @@ Create `.env.local` files in both frontend and backend directories:
 **Frontend (.env.local)**
 ```env
 VITE_BACKEND_URL=http://localhost:3001
-VITE_APP_NAME=CBZ API Delta
+VITE_APP_NAME=Delta API Suite
 ```
 
 **Backend (.env.local)**
@@ -173,4 +173,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ by the CBZ API Delta Team**
+**Made with ❤️ by the Delta API Suite Team**

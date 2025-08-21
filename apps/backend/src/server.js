@@ -1,4 +1,4 @@
-// server.js - Main API server for CBZ API Delta
+// server.js - Main API server for Delta API Suite
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -87,9 +87,9 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     status: 'healthy',
-    service: 'CBZ API Delta Backend',
-    timestamp: new Date().toISOString(),
-    uptime: {
+            service: 'Delta API Suite Backend',
+        timestamp: new Date().toISOString(),
+        uptime: {
       milliseconds: uptime,
       formatted: `${Math.floor(uptime / 3600000)}h ${Math.floor((uptime % 3600000) / 60000)}m ${Math.floor((uptime % 60000) / 1000)}s`
     },
@@ -332,14 +332,14 @@ app.get('/api/status', (req, res) => {
   res.json({ 
     success: true, 
     status: 'running',
-    service: 'CBZ API Delta Backend',
+    service: 'Delta API Suite Backend',
     timestamp: new Date().toISOString()
   });
 });
 
 // Start the server
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`CBZ API Delta backend server running on port ${PORT}`);
+  console.log(`Delta API Suite backend server running on port ${PORT}`);
 });
 
 // Keep the server running

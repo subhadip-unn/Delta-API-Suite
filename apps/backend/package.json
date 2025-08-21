@@ -1,7 +1,7 @@
 {
   "name": "cbz-api-delta-backend",
   "version": "1.0.0",
-  "description": "CBZ API Delta Comparison Backend API",
+  "description": "Delta API Suite Comparison Backend API",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
