@@ -165,11 +165,11 @@ export default function JsonDiffTool() {
     }
   }, []);
 
-  // Auto-save complete comparison data when it changes
+  // Auto-save complete comparison data when it changes (localStorage only - not DeltaDB)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       try {
-        // Save complete comparison data to localStorage
+        // Save complete comparison data to localStorage only
         const completeData = {
           left: {
             baseUrl: leftEndpoint.baseUrl,
@@ -194,7 +194,7 @@ export default function JsonDiffTool() {
         };
         
         saveCompleteComparisonData(completeData);
-        console.log('💾 [PERSISTENCE] Complete comparison data saved');
+        console.log('💾 [PERSISTENCE] Complete comparison data saved to localStorage');
       } catch (error) {
         console.error('❌ [PERSISTENCE] Error saving comparison data:', error);
       }
@@ -925,7 +925,7 @@ export default function JsonDiffTool() {
   }, []);
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-6 pt-6">
+    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-6 pt-6 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header Section */}
         <motion.div
@@ -1063,6 +1063,7 @@ export default function JsonDiffTool() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
+              className="mb-4"
             >
               <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
                 <CardHeader className="pb-3">
