@@ -67,33 +67,12 @@ export const defaultConfig: ConfigState = {
   ids: {}
 };
 
-// Sample data for demonstration - Real Cricbuzz Venue API V1 vs V2 Comparison
+// Sample data for demonstration - Cricbuzz Venues API V1 vs V2 Comparison (venueId=31)
 export const sampleConfig: ConfigState = {
   endpoints: [
     {
-      key: "home-matches-v1",
-      path: "{platform}/matches/v1/home",
-      baseUrlA: "https://apiserver.cricbuzz.com",
-      baseUrlB: "https://apiserver.cricbuzz.com",
-      platforms: ["i", "a", "m", "w"]
-    },
-    {
-      key: "home-matches-v2",
-      path: "{platform}/matches/v2/home",
-      baseUrlA: "https://apiserver.cricbuzz.com",
-      baseUrlB: "https://apiserver.cricbuzz.com",
-      platforms: ["i", "a", "m", "w"]
-    },
-    {
-      key: "home-matches-prod-vs-stg",
-      path: "{platform}/matches/v1/home",
-      baseUrlA: "https://apiserver.cricbuzz.com",
-      baseUrlB: "https://api.cricbuzz.stg",
-      platforms: ["i", "a", "m", "w"]
-    },
-    {
       key: "venue-details-v1",
-      path: "{platform}/venues/v1/{venueId}",
+      path: "m/venues/v1/{venueId}",
       baseUrlA: "https://apiserver.cricbuzz.com",
       baseUrlB: "https://apiserver.cricbuzz.com",
       platforms: ["i", "a", "m", "w"],
@@ -101,7 +80,7 @@ export const sampleConfig: ConfigState = {
     },
     {
       key: "venue-details-v2",
-      path: "{platform}/venues/v2/{venueId}",
+      path: "m/venues/v2/{venueId}",
       baseUrlA: "https://apiserver.cricbuzz.com",
       baseUrlB: "https://apiserver.cricbuzz.com",
       platforms: ["i", "a", "m", "w"],
@@ -110,43 +89,43 @@ export const sampleConfig: ConfigState = {
   ],
   jobs: [
     {
-      name: "iOS: Home Matches V1 vs V2",
+      name: "iOS: Venues V1 vs V2 (venueId=31)",
       platform: "i",
       ignorePaths: ["responseLastUpdated", "timestamp"],
       retryPolicy: { retries: 3, delayMs: 1000 },
       endpointPairs: [
         {
-          endpointA: "home-matches-v1",
-          endpointB: "home-matches-v2"
+          endpointA: "venue-details-v1",
+          endpointB: "venue-details-v2"
         }
       ]
     },
     {
-      name: "Android: Home Matches V1 vs V2",
+      name: "Android: Venues V1 vs V2 (venueId=31)",
       platform: "a",
       ignorePaths: ["responseLastUpdated", "timestamp"],
       retryPolicy: { retries: 3, delayMs: 1000 },
       endpointPairs: [
         {
-          endpointA: "home-matches-v1",
-          endpointB: "home-matches-v2"
+          endpointA: "venue-details-v1",
+          endpointB: "venue-details-v2"
         }
       ]
     },
     {
-      name: "Mobile Web: Home Matches V1 vs V2",
+      name: "Mobile Web: Venues V1 vs V2 (venueId=31)",
       platform: "m",
       ignorePaths: ["responseLastUpdated", "timestamp"],
       retryPolicy: { retries: 3, delayMs: 1000 },
       endpointPairs: [
         {
-          endpointA: "home-matches-v1",
-          endpointB: "home-matches-v2"
+          endpointA: "venue-details-v1",
+          endpointB: "venue-details-v2"
         }
       ]
     },
     {
-      name: "Desktop Web: Venue Details V1 vs V2",
+      name: "Desktop Web: Venues V1 vs V2 (venueId=31)",
       platform: "w",
       ignorePaths: ["responseLastUpdated", "timestamp"],
       retryPolicy: { retries: 3, delayMs: 1000 },
@@ -190,16 +169,11 @@ export const sampleConfig: ConfigState = {
   },
   ids: {
     "venueId": [
-      { name: "Eden Gardens, Kolkata", value: "31" },
-      { name: "Wankhede Stadium, Mumbai", value: "45" },
-      { name: "M. Chinnaswamy Stadium, Bangalore", value: "67" },
-      { name: "Feroz Shah Kotla, Delhi", value: "89" },
-      { name: "MA Chidambaram Stadium, Chennai", value: "23" }
-    ],
-    "matchId": [
-      { name: "India vs England ODI", value: "114960" },
-      { name: "Australia vs New Zealand T20", value: "118928" },
-      { name: "IPL Final 2024", value: "120045" }
+      { name: "Eden Gardens, Kolkata (Primary Test)", value: "31", enabled: true },
+      { name: "Wankhede Stadium, Mumbai", value: "45", enabled: false },
+      { name: "M. Chinnaswamy Stadium, Bangalore", value: "67", enabled: false },
+      { name: "Feroz Shah Kotla, Delhi", value: "89", enabled: false },
+      { name: "MA Chidambaram Stadium, Chennai", value: "23", enabled: false }
     ]
   }
 };

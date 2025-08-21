@@ -430,7 +430,7 @@ async function runJob(jobConfig, headers, ids, endpoints) {
     jobId: jobConfig.id || 'job-1',
     jobName: jobConfig.name || 'Job 1',
     platform,
-    testEngineer: jobConfig.testEngineer || 'QA Engineer',
+    testEngineer: jobConfig.testEngineer || qaName || 'QA Engineer',
     baseUrlA: jobConfig.baseUrlA || jobConfig.baseA || '',
     baseUrlB: jobConfig.baseUrlB || jobConfig.baseB || '',
     summary: {
@@ -484,7 +484,8 @@ async function runAllJobs(configState, qaName) {
         platform: platform,
         ignorePaths: [],
         retryPolicy: { retries: 3, delayMs: 1000 },
-        endpointsToRun: endpoints.filter(ep => ep.platform === platform).map(ep => ep.key)
+        endpointsToRun: endpoints.filter(ep => ep.platform === platform).map(ep => ep.key),
+        qaName: qaName // Add qaName to the job
       };
     }).filter(job => job.endpointsToRun.length > 0);
     
@@ -532,12 +533,13 @@ async function runAllJobs(configState, qaName) {
 
   // Ensure we have a valid QA name
   const testEngineer = qaName || 'QA Engineer';
-  console.log(`🧑‍💼 [QA-ATTRIBUTION] Running comparison for: ${testEngineer} with ${jobs.length} jobs`);
+  console.log(`🧑‍💼 [QA-ATTRIBUTION] Running comparison for: "${testEngineer}" with ${jobs.length} jobs`);
   
   // Add testEngineer to each job before running
   const jobsWithQA = jobs.map(job => ({
     ...job,
-    testEngineer: testEngineer
+    testEngineer: testEngineer,
+    qaName: testEngineer  // Ensure QA name is available in job context
   }));
   
   // Run all jobs and collect results

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { 
   Copy, 
   Download, 
@@ -790,6 +790,9 @@ export default function UniversalMonacoDiffViewer({
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>🚀 Professional Diff Analysis</DialogTitle>
+            <DialogDescription>
+              Advanced JSON comparison with semantic analysis and order-insensitive matching
+            </DialogDescription>
           </DialogHeader>
           <div className="overflow-auto max-h-[80vh]">
             <DiffViewerContent />
