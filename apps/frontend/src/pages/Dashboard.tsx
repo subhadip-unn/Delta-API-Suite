@@ -97,22 +97,22 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">API Management Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">DeltaDB</h1>
         <p className="text-muted-foreground mt-2">
-          Welcome back, {qaName}! Manage your API configurations and comparison history.
+          Welcome back, {qaName}! Professional API Configuration Management & Comparison Hub.
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="p-0">
+          <CardHeader className="pb-3 px-4 pt-4">
             <CardTitle className="text-sm font-medium flex items-center">
               <Database className="mr-2 h-4 w-4" />
               Saved APIs
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4">
             <div className="text-2xl font-bold">{stats.totalAPIs}</div>
             <p className="text-xs text-muted-foreground">
               API configurations stored locally
@@ -120,14 +120,14 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="p-0">
+          <CardHeader className="pb-3 px-4 pt-4">
             <CardTitle className="text-sm font-medium flex items-center">
               <Tag className="mr-2 h-4 w-4" />
               Active Tags
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4">
             <div className="text-2xl font-bold">{stats.totalTags}</div>
             <p className="text-xs text-muted-foreground">
               Organized categories
@@ -135,14 +135,14 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="p-0">
+          <CardHeader className="pb-3 px-4 pt-4">
             <CardTitle className="text-sm font-medium flex items-center">
               <Activity className="mr-2 h-4 w-4" />
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4">
             <div className="text-2xl font-bold">{stats.recentComparisons}</div>
             <p className="text-xs text-muted-foreground">
               Comparisons this week
@@ -152,7 +152,7 @@ const Dashboard = () => {
       </div>
 
       {/* Search and Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-6 items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
@@ -163,7 +163,7 @@ const Dashboard = () => {
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button variant="outline" onClick={handleExportData}>
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -192,15 +192,15 @@ const Dashboard = () => {
       </div>
 
               {/* Recent Auto-saved Configurations */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Recent Auto-saved Configurations</h2>
+        <div className="pt-2">
+          <h2 className="text-lg font-semibold mb-6">Recent Auto-saved Configurations</h2>
           {(() => {
             const autoSavedAPIs = savedAPIs.filter(api => api.tags.includes('auto-saved'));
             return autoSavedAPIs.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {autoSavedAPIs.slice(0, 6).map((api) => (
-                  <Card key={api.id} className="hover:shadow-md transition-shadow border-blue-200">
-                    <CardHeader className="pb-2">
+                  <Card key={api.id} className="hover:shadow-md transition-shadow border-blue-200 p-0">
+                    <CardHeader className="pb-3 px-4 pt-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <CardTitle className="text-sm font-medium truncate">
@@ -215,7 +215,7 @@ const Dashboard = () => {
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="pb-2">
+                    <CardContent className="pb-3 px-4">
                       <div className="space-y-2">
                         <div className="text-xs">
                           <span className="text-muted-foreground">URL:</span>
@@ -235,7 +235,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter className="pt-2">
+                    <CardFooter className="pt-3 px-4 pb-4">
                       <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
                         <span>Saved {new Date(api.createdAt).toLocaleTimeString()}</span>
                         <Link to={`/deltapro?load=${api.id}`}>
@@ -249,17 +249,17 @@ const Dashboard = () => {
                 ))}
               </div>
             ) : (
-              <Card className="p-6">
-                <div className="text-center py-6">
-                  <Database className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-                  <p className="text-base text-muted-foreground mb-2">
-                DeltaPro+ automatically saves your API configurations every 2 seconds
-              </p>
-              <p className="text-sm text-muted-foreground">
-                These are stored locally and can be loaded anytime
-              </p>
-                </div>
-              </Card>
+                             <Card className="p-8">
+                 <div className="text-center py-8">
+                   <Database className="h-16 w-16 text-blue-500 mx-auto mb-6" />
+                   <p className="text-lg text-muted-foreground mb-3">
+                     DeltaPro+ automatically saves your API configurations every 2 seconds
+                   </p>
+                   <p className="text-base text-muted-foreground">
+                     These are stored locally and can be loaded anytime
+                   </p>
+                 </div>
+               </Card>
             );
           })()}
         </div>
@@ -269,15 +269,15 @@ const Dashboard = () => {
           <h2 className="text-lg font-semibold mb-4">Saved API Configurations</h2>
           
           {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading saved APIs...</p>
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-muted-foreground mt-4 text-base">Loading saved APIs...</p>
             </div>
           ) : filteredAPIs.length === 0 ? (
-            <Card className="text-center py-12">
-              <Archive className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-              <h3 className="text-xl font-semibold mb-3">No APIs saved yet</h3>
-              <p className="text-muted-foreground mb-6 text-base">
+            <Card className="text-center py-16 px-8">
+              <Archive className="h-20 w-20 text-muted-foreground mx-auto mb-8" />
+              <h3 className="text-2xl font-semibold mb-4">No APIs saved yet</h3>
+              <p className="text-muted-foreground mb-8 text-base">
                 Start by using DeltaPro+ - it will auto-save everything!
               </p>
               <Link to="/deltapro">
@@ -288,10 +288,10 @@ const Dashboard = () => {
               </Link>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredAPIs.map((api) => (
-                <Card key={api.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
+                <Card key={api.id} className="hover:shadow-md transition-shadow p-0">
+                  <CardHeader className="pb-3 px-4 pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-sm font-medium truncate">
@@ -306,7 +306,7 @@ const Dashboard = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="pb-2">
+                  <CardContent className="pb-3 px-4">
                     <div className="space-y-2">
                       <div className="text-xs">
                         <span className="text-muted-foreground">URL:</span>
@@ -328,7 +328,7 @@ const Dashboard = () => {
                       )}
                     </div>
                   </CardContent>
-                  <CardFooter className="pt-2">
+                  <CardFooter className="pt-3 px-4 pb-4">
                     <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
                       <span>Updated {new Date(api.updatedAt).toLocaleDateString()}</span>
                       <Link to={`/deltapro?load=${api.id}`}>
@@ -345,15 +345,19 @@ const Dashboard = () => {
         </div>
 
       {/* Quick Actions */}
-      <div className="pt-4">
+      <div className="pt-6">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <Link to="/deltapro">
-            <Button>New API Comparison</Button>
+            <Button className="px-6 py-2">
+              <Plus className="mr-2 h-4 w-4" />
+              New API Comparison
+            </Button>
           </Link>
-          <Link to="/upload">
-            <Button variant="outline">Upload Report</Button>
-          </Link>
+          <Button variant="outline" className="px-6 py-2" onClick={handleExportData}>
+            <Download className="mr-2 h-4 w-4" />
+            Export All Data
+          </Button>
         </div>
       </div>
     </div>

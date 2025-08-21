@@ -32,7 +32,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/upload" element={<div>Upload Report Page</div>} />
+              
               <Route path="/deltapro" element={<JsonDiffTool />} />
             </Route>
           </Route>

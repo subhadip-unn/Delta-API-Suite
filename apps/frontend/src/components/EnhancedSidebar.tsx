@@ -139,8 +139,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
       to: '/deltapro', 
       description: 'Advanced JSON comparison tool' 
     },
-    { icon: Database, label: 'Dashboard', to: '/dashboard', description: 'API management & organization' },
-    { icon: Upload, label: 'Upload Report', to: '/upload', description: 'Import test data' },
+    { icon: Database, label: 'DeltaDB', to: '/dashboard', description: 'API management & organization' },
     { icon: HelpCircle, label: 'Documentation', to: '/docs', description: 'Help and guides' },
   ];
 
