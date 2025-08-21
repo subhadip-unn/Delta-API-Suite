@@ -844,14 +844,14 @@ export default function JsonDiffTool() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 pt-4 px-6 pb-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-6 pb-4">
+      <div className="max-w-7xl mx-auto space-y-4">
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center space-y-3"
+          className="text-center space-y-2"
         >
           <div className="flex items-center justify-center space-x-3">
             <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
@@ -881,7 +881,7 @@ export default function JsonDiffTool() {
           </div>
           
           {/* Action Buttons */}
-          <div className="flex items-center justify-center space-x-3 pt-1">
+          <div className="flex items-center justify-center space-x-3">
             <Button
               variant="outline"
               size="sm"
@@ -1073,7 +1073,7 @@ export default function JsonDiffTool() {
         </AnimatePresence>
 
         {/* Main Content - Split Layout */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-4">
           {/* Left Endpoint */}
           <EndpointPanel
             endpoint={leftEndpoint}
