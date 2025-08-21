@@ -95,16 +95,23 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">DeltaDB</h1>
-        <p className="text-muted-foreground mt-2">
+    <div className="space-y-8">
+      <div className="text-center py-8">
+        <div className="flex items-center justify-center space-x-3 mb-4">
+          <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
+            <Database className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            DeltaDB
+          </h1>
+        </div>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Welcome back, {qaName}! Professional API Configuration Management & Comparison Hub.
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-0">
           <CardHeader className="pb-3 px-4 pt-4">
             <CardTitle className="text-sm font-medium flex items-center">
@@ -152,7 +159,7 @@ const Dashboard = () => {
       </div>
 
       {/* Search and Actions */}
-      <div className="flex flex-col sm:flex-row gap-6 items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input

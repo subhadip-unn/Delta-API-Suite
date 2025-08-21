@@ -43,25 +43,11 @@ export const Layout = () => {
         sidebarCollapsed && "lg:ml-16" // Collapsed sidebar width (64px)
       )}>
         <div className="flex flex-col min-h-screen">
-        {/* Header */}
-        <header className="h-16 flex items-center px-4 border-b border-border/50 shrink-0 bg-background/95 backdrop-blur-sm sticky top-0 z-30">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden hover:bg-accent/50 transition-colors duration-200"
-            onClick={toggleSidebar}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
 
-          <div className="ml-auto flex items-center space-x-4">
-            {/* Header actions can be added here if needed */}
-          </div>
-        </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto min-w-0">
-          <div className="h-full w-full">
+        <main className="flex-1 min-w-0">
+          <div className="w-full">
             <Outlet />
           </div>
         </main>
