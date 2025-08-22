@@ -1195,6 +1195,7 @@ export default function JsonDiffTool() {
             onAddHeader={addHeader}
             onRemoveHeader={removeHeader}
             side="left"
+            onShowPlatformHeaders={() => setShowPlatformHeaders(true)}
           />
 
           {/* Right Endpoint */}
@@ -1206,6 +1207,7 @@ export default function JsonDiffTool() {
             onAddHeader={addHeader}
             onRemoveHeader={removeHeader}
             side="right"
+            onShowPlatformHeaders={() => setShowPlatformHeaders(true)}
           />
         </div>
 
@@ -1440,6 +1442,7 @@ interface EndpointPanelProps {
   onAddHeader: (endpointId: string, key: string, value: string) => void;
   onRemoveHeader: (endpointId: string, key: string) => void;
   side: 'left' | 'right';
+  onShowPlatformHeaders: () => void;
 }
 
 function EndpointPanel({ 
@@ -1449,7 +1452,8 @@ function EndpointPanel({
   onClear, 
   onAddHeader, 
   onRemoveHeader, 
-  side 
+  side,
+  onShowPlatformHeaders
 }: EndpointPanelProps) {
   const [newHeaderKey, setNewHeaderKey] = useState('');
   const [newHeaderValue, setNewHeaderValue] = useState('');
@@ -1617,7 +1621,19 @@ function EndpointPanel({
 
           {/* Headers Section */}
           <div className="space-y-3">
-            <Label>Headers</Label>
+            <div className="flex items-center justify-between">
+              <Label>Headers</Label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onShowPlatformHeaders}
+                className="px-3"
+                title="Load Platform Headers"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Platform Headers
+              </Button>
+            </div>
             
             {/* Existing Headers */}
             <div className="space-y-2">
