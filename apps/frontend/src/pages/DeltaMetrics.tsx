@@ -98,7 +98,7 @@ const tools = [
     status: 'active',
     usage: '45 configs stored',
     color: 'from-indigo-500 to-purple-500',
-    route: '/dashboard'
+            route: '/deltadb'
   }
 ];
 
@@ -309,7 +309,7 @@ export default function DeltaMetrics() {
                   Start Comparing APIs
                 </Button>
                 <Button 
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/deltadb')}
                   variant="outline"
                 >
                   <Database className="w-4 h-4 mr-2" />

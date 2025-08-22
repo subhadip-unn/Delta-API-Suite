@@ -8,8 +8,21 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import UniversalMonacoDiffViewer from '@/components/shared/UniversalMonacoDiffViewer';
-import { indexedDBService, APIConfig } from '@/services/indexedDB';
+import { indexedDBService } from '@/services/indexedDB';
 // Types for the working comparison logic
+interface APIConfig {
+  id: string;
+  name: string;
+  url: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  headers: Record<string, string>;
+  body?: string;
+  description?: string;
+  tags: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface DiffItem {
   path: string;
   type: 'missing' | 'extra' | 'changed' | 'type-changed';
@@ -224,8 +237,8 @@ export default function JsonDiffTool() {
             description: `Auto-saved: ${leftEndpoint.name || 'Live API'} configuration`,
             tags: ['auto-saved', 'live-api', 'production']
           };
-          const leftId = await indexedDBService.saveAPIConfig(leftConfig);
-          console.log('✅ [AUTO-SAVE] Left endpoint saved with ID:', leftId);
+          await indexedDBService.addAPIConfig(leftConfig);
+          console.log('✅ [AUTO-SAVE] Left endpoint saved successfully');
           savedCount++;
         }
 
@@ -238,8 +251,8 @@ export default function JsonDiffTool() {
             description: `Auto-saved: ${rightEndpoint.name || 'New API'} configuration`,
             tags: ['auto-saved', 'new-api', 'staging']
           };
-          const rightId = await indexedDBService.saveAPIConfig(rightConfig);
-          console.log('✅ [AUTO-SAVE] Right endpoint saved with ID:', rightId);
+          await indexedDBService.addAPIConfig(rightConfig);
+          console.log('✅ [AUTO-SAVE] Right endpoint saved successfully');
           savedCount++;
         }
 
@@ -423,7 +436,7 @@ export default function JsonDiffTool() {
 
   const loadSavedConfigs = useCallback(async () => {
     try {
-      const configs = await indexedDBService.getAllAPIConfigs();
+      const configs = await indexedDBService.getAPIConfigs();
       setIndexedDBConfigs(configs);
     } catch (error) {
       console.error('Failed to load saved configs:', error);
@@ -500,7 +513,8 @@ export default function JsonDiffTool() {
 
   const loadConfigById = async (configId: string) => {
     try {
-      const config = await indexedDBService.getAPIConfig(configId);
+      const configs = await indexedDBService.getAPIConfigs();
+      const config = configs.find(c => c.id === configId);
       if (config) {
         const urlParts = config.url.split('/');
         const baseUrl = urlParts.slice(0, -1).join('/');
@@ -546,8 +560,8 @@ export default function JsonDiffTool() {
           description: `Manual save: ${leftEndpoint.name || 'Live API'} configuration`,
           tags: ['manual-save', 'live-api', 'production']
         };
-        const leftId = await indexedDBService.saveAPIConfig(leftConfig);
-        console.log('✅ [MANUAL-SAVE] Left endpoint saved with ID:', leftId);
+        await indexedDBService.addAPIConfig(leftConfig);
+        console.log('✅ [MANUAL-SAVE] Left endpoint saved successfully');
         savedCount++;
       }
 
@@ -560,8 +574,8 @@ export default function JsonDiffTool() {
           description: `Manual save: ${rightEndpoint.name || 'New API'} configuration`,
           tags: ['manual-save', 'new-api', 'staging']
         };
-        const rightId = await indexedDBService.saveAPIConfig(rightConfig);
-        console.log('✅ [MANUAL-SAVE] Right endpoint saved with ID:', rightId);
+        await indexedDBService.addAPIConfig(rightConfig);
+        console.log('✅ [MANUAL-SAVE] Right endpoint saved successfully');
         savedCount++;
       }
 

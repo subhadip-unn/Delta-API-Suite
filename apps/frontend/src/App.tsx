@@ -7,7 +7,7 @@ import './global.css';
 
 // Lazy load essential page components only
 const DeltaMetrics = lazy(() => import('./pages/DeltaMetrics'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DeltaDB = lazy(() => import('./pages/DeltaDB'));
 const JsonDiffTool = lazy(() => import('./pages/JsonDiffTool'));
 const Login = lazy(() => import('./pages/Login'));
 
@@ -33,7 +33,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<DeltaMetrics />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/deltadb" element={<DeltaDB />} />
               <Route path="/deltapro" element={<JsonDiffTool />} />
             </Route>
           </Route>

@@ -1,34 +1,10 @@
-// IndexedDB Service for Local API Configuration Storage
-// This implements your brilliant idea of storing everything locally on user's laptop
-
-export interface APIConfig {
-  id: string;
-  name: string;
-  url: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  headers: Record<string, string>;
-  body?: string;
-  description?: string;
-  tags: string[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ComparisonHistory {
-  id: string;
-  name: string;
-  leftConfig: APIConfig;
-  rightConfig: APIConfig;
-  result: any;
-  createdAt: Date;
-}
-
+// IndexedDB Service for DeltaDB
 class IndexedDBService {
-  private dbName = 'CBZ-API-Delta-DB';
+  private dbName = 'DeltaDB';
   private version = 1;
   private db: IDBDatabase | null = null;
 
-  async init(): Promise<void> {
+  async initDB(): Promise<void> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, this.version);
 
@@ -41,240 +17,236 @@ class IndexedDBService {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
-        // API Configs store
-        if (!db.objectStoreNames.contains('apiConfigs')) {
-          const configStore = db.createObjectStore('apiConfigs', { keyPath: 'id' });
-          configStore.createIndex('name', 'name', { unique: false });
-          configStore.createIndex('tags', 'tags', { unique: false });
-          configStore.createIndex('createdAt', 'createdAt', { unique: false });
+        // Create object stores for each cluster
+        if (!db.objectStoreNames.contains('baseUrls')) {
+          const baseUrlsStore = db.createObjectStore('baseUrls', { keyPath: 'id' });
+          baseUrlsStore.createIndex('name', 'name', { unique: false });
+          baseUrlsStore.createIndex('environment', 'environment', { unique: false });
         }
 
-        // Comparison History store
-        if (!db.objectStoreNames.contains('comparisonHistory')) {
-          const historyStore = db.createObjectStore('comparisonHistory', { keyPath: 'id' });
-          historyStore.createIndex('name', 'name', { unique: false });
-          historyStore.createIndex('createdAt', 'createdAt', { unique: false });
+        if (!db.objectStoreNames.contains('endpoints')) {
+          const endpointsStore = db.createObjectStore('endpoints', { keyPath: 'id' });
+          endpointsStore.createIndex('name', 'name', { unique: false });
+          endpointsStore.createIndex('category', 'category', { unique: false });
+          endpointsStore.createIndex('method', 'method', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('headers')) {
+          const headersStore = db.createObjectStore('headers', { keyPath: 'id' });
+          headersStore.createIndex('name', 'name', { unique: false });
+          headersStore.createIndex('platform', 'platform', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('apiConfigs')) {
+          const configsStore = db.createObjectStore('apiConfigs', { keyPath: 'id' });
+          configsStore.createIndex('name', 'name', { unique: false });
+          configsStore.createIndex('baseUrlId', 'baseUrlId', { unique: false });
+          configsStore.createIndex('endpointId', 'endpointId', { unique: false });
+          configsStore.createIndex('headerId', 'headerId', { unique: false });
         }
       };
     });
   }
 
-  // API Configuration Management
-  async saveAPIConfig(config: Omit<APIConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    if (!this.db) await this.init();
-    
-    const id = crypto.randomUUID();
-    const now = new Date();
-    const fullConfig: APIConfig = {
-      ...config,
-      id,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['apiConfigs'], 'readwrite');
-      const store = transaction.objectStore('apiConfigs');
-      const request = store.add(fullConfig);
-
-      request.onsuccess = () => resolve(id);
-      request.onerror = () => reject(request.error);
-    });
+  // Base URLs CRUD
+  async getBaseUrls(): Promise<any[]> {
+    return this.getAllFromStore('baseUrls');
   }
 
-  async updateAPIConfig(id: string, updates: Partial<APIConfig>): Promise<void> {
-    if (!this.db) await this.init();
-    
-    const config = await this.getAPIConfig(id);
-    if (!config) throw new Error('API config not found');
-
-    const updatedConfig = {
-      ...config,
-      ...updates,
-      updatedAt: new Date()
-    };
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['apiConfigs'], 'readwrite');
-      const store = transaction.objectStore('apiConfigs');
-      const request = store.put(updatedConfig);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+  async addBaseUrl(baseUrl: any): Promise<void> {
+    return this.addToStore('baseUrls', baseUrl);
   }
 
-  async getAPIConfig(id: string): Promise<APIConfig | null> {
-    if (!this.db) await this.init();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['apiConfigs'], 'readonly');
-      const store = transaction.objectStore('apiConfigs');
-      const request = store.get(id);
-
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
+  async updateBaseUrl(id: string, baseUrl: any): Promise<void> {
+    return this.updateInStore('baseUrls', id, baseUrl);
   }
 
-  async getAllAPIConfigs(): Promise<APIConfig[]> {
-    if (!this.db) await this.init();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['apiConfigs'], 'readonly');
-      const store = transaction.objectStore('apiConfigs');
-      const request = store.getAll();
-
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(request.error);
-    });
+  async deleteBaseUrl(id: string): Promise<void> {
+    return this.deleteFromStore('baseUrls', id);
   }
 
-  async searchAPIConfigs(query: string): Promise<APIConfig[]> {
-    const allConfigs = await this.getAllAPIConfigs();
-    const lowerQuery = query.toLowerCase();
-    
-    return allConfigs.filter(config => 
-      config.name.toLowerCase().includes(lowerQuery) ||
-      config.url.toLowerCase().includes(lowerQuery) ||
-      config.description?.toLowerCase().includes(lowerQuery) ||
-      config.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
-    );
+  // Endpoints CRUD
+  async getEndpoints(): Promise<any[]> {
+    return this.getAllFromStore('endpoints');
+  }
+
+  async addEndpoint(endpoint: any): Promise<void> {
+    return this.addToStore('endpoints', endpoint);
+  }
+
+  async updateEndpoint(id: string, endpoint: any): Promise<void> {
+    return this.updateInStore('endpoints', id, endpoint);
+  }
+
+  async deleteEndpoint(id: string): Promise<void> {
+    return this.deleteFromStore('endpoints', id);
+  }
+
+  // Headers CRUD
+  async getHeaders(): Promise<any[]> {
+    return this.getAllFromStore('headers');
+  }
+
+  async addHeader(header: any): Promise<void> {
+    return this.addToStore('headers', header);
+  }
+
+  async updateHeader(id: string, header: any): Promise<void> {
+    return this.updateInStore('headers', id, header);
+  }
+
+  async deleteHeader(id: string): Promise<void> {
+    return this.deleteFromStore('headers', id);
+  }
+
+  // API Configs (for DeltaPro+ integration)
+  async getAPIConfigs(): Promise<any[]> {
+    return this.getAllFromStore('apiConfigs');
+  }
+
+  async addAPIConfig(config: any): Promise<void> {
+    return this.addToStore('apiConfigs', config);
+  }
+
+  async updateAPIConfig(id: string, config: any): Promise<void> {
+    return this.updateInStore('apiConfigs', id, config);
   }
 
   async deleteAPIConfig(id: string): Promise<void> {
-    if (!this.db) await this.init();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['apiConfigs'], 'readwrite');
-      const store = transaction.objectStore('apiConfigs');
-      const request = store.delete(id);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    return this.deleteFromStore('apiConfigs', id);
   }
 
-  // Comparison History Management
-  async saveComparison(comparison: Omit<ComparisonHistory, 'id' | 'createdAt'>): Promise<string> {
-    if (!this.db) await this.init();
-    
-    const id = crypto.randomUUID();
-    const now = new Date();
-    const fullComparison: ComparisonHistory = {
-      ...comparison,
-      id,
-      createdAt: now
-    };
+  // Generic CRUD operations
+  private async getAllFromStore(storeName: string): Promise<any[]> {
+    return new Promise(async (resolve, reject) => {
+      if (!this.db) {
+        try {
+          // Auto-initialize if not already done
+          await this.initDB();
+        } catch (error) {
+          reject(new Error('Failed to initialize database'));
+          return;
+        }
+      }
 
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['comparisonHistory'], 'readwrite');
-      const store = transaction.objectStore('comparisonHistory');
-      const request = store.add(fullComparison);
-
-      request.onsuccess = () => resolve(id);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  async getComparisonHistory(): Promise<ComparisonHistory[]> {
-    if (!this.db) await this.init();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['comparisonHistory'], 'readonly');
-      const store = transaction.objectStore('comparisonHistory');
+      if (!this.db) {
+        reject(new Error('Database still not initialized after init attempt'));
+        return;
+      }
+      
+      const transaction = this.db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
       const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result || []);
       request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || []);
     });
   }
 
-  async deleteComparison(id: string): Promise<void> {
-    if (!this.db) await this.init();
-    
+  private async addToStore(storeName: string, item: any): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      if (!this.db) {
+        try {
+          await this.initDB();
+        } catch (error) {
+          reject(new Error('Failed to initialize database'));
+          return;
+        }
+      }
+      
+      if (!this.db) {
+        reject(new Error('Database still not initialized after init attempt'));
+        return;
+      }
+
+      const transaction = this.db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.add(item);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
+
+  private async updateInStore(storeName: string, id: string, item: any): Promise<void> {
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['comparisonHistory'], 'readwrite');
-      const store = transaction.objectStore('comparisonHistory');
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put({ ...item, id });
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
+
+  private async deleteFromStore(storeName: string, id: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
       const request = store.delete(id);
 
-      request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
     });
   }
 
   // Export/Import functionality
-  async exportAllData(): Promise<string> {
-    const configs = await this.getAllAPIConfigs();
-    const history = await this.getComparisonHistory();
-    
-    const exportData = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      apiConfigs: configs,
-      comparisonHistory: history
+  async exportAllData(): Promise<any> {
+    const data = {
+      baseUrls: await this.getBaseUrls(),
+      endpoints: await this.getEndpoints(),
+      headers: await this.getHeaders(),
+      apiConfigs: await this.getAPIConfigs(),
+      exportDate: new Date().toISOString(),
+      version: '1.0.0'
     };
-    
-    return JSON.stringify(exportData, null, 2);
+
+    return data;
   }
 
-  async importData(jsonData: string): Promise<void> {
-    const data = JSON.parse(jsonData);
+  async importData(data: any): Promise<void> {
+    // Clear existing data
+    await this.clearAllData();
+
+    // Import new data
+    for (const baseUrl of data.baseUrls || []) {
+      await this.addBaseUrl(baseUrl);
+    }
+
+    for (const endpoint of data.endpoints || []) {
+      await this.addEndpoint(endpoint);
+    }
+
+    for (const header of data.headers || []) {
+      await this.addHeader(header);
+    }
+
+    for (const config of data.apiConfigs || []) {
+      await this.addAPIConfig(config);
+    }
+  }
+
+  private async clearAllData(): Promise<void> {
+    const stores = ['baseUrls', 'endpoints', 'headers', 'apiConfigs'];
     
-    if (data.apiConfigs) {
-      for (const config of data.apiConfigs) {
-        // Remove existing id to create new one
-        const { id, ...configWithoutId } = config;
-        await this.saveAPIConfig(configWithoutId);
+    for (const storeName of stores) {
+      if (this.db?.objectStoreNames.contains(storeName)) {
+        const transaction = this.db.transaction([storeName], 'readwrite');
+        const store = transaction.objectStore(storeName);
+        await store.clear();
       }
     }
-    
-    if (data.comparisonHistory) {
-      for (const comparison of data.comparisonHistory) {
-        const { id, ...comparisonWithoutId } = comparison;
-        await this.saveComparison(comparisonWithoutId);
-      }
-    }
-  }
-
-  // Utility functions
-  async clearAllData(): Promise<void> {
-    if (!this.db) await this.init();
-    
-    const transaction = this.db!.transaction(['apiConfigs', 'comparisonHistory'], 'readwrite');
-    const configStore = transaction.objectStore('apiConfigs');
-    const historyStore = transaction.objectStore('comparisonHistory');
-    
-    await Promise.all([
-      new Promise<void>((resolve, reject) => {
-        const request = configStore.clear();
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-      }),
-      new Promise<void>((resolve, reject) => {
-        const request = historyStore.clear();
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-      })
-    ]);
-  }
-
-  async getDatabaseSize(): Promise<number> {
-    if (!this.db) await this.init();
-    
-    // This is a rough estimate - IndexedDB doesn't provide exact size
-    const configs = await this.getAllAPIConfigs();
-    const history = await this.getComparisonHistory();
-    
-    const configSize = JSON.stringify(configs).length;
-    const historySize = JSON.stringify(history).length;
-    
-    return configSize + historySize;
   }
 }
 
-// Export singleton instance
 export const indexedDBService = new IndexedDBService();
-
-// Initialize on import
-indexedDBService.init().catch(console.error);
