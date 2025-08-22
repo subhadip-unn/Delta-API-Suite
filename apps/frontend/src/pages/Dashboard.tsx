@@ -157,7 +157,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-8 pt-6">
+    <div className="space-y-8 pt-6 px-6 max-w-7xl mx-auto">
       <div className="text-center py-8">
         <div className="flex items-center justify-center space-x-3 mb-4">
           <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
@@ -220,122 +220,62 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Search and Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search APIs by name, URL, or tags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleExportData}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportData}
-              className="hidden"
+      {/* Quick Actions - Moved to top for better UX */}
+      <div className="bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-xl p-6 border border-gray-600/30">
+        <h2 className="text-lg font-semibold mb-4 text-gray-100">Quick Actions</h2>
+        <div className="flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex gap-3">
+            <Link to="/deltapro">
+              <Button className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
+                <Plus className="mr-2 h-5 w-5" />
+                New API Comparison
+              </Button>
+            </Link>
+            <Button variant="outline" onClick={handleExportData} className="px-6 py-3">
+              <Download className="mr-2 h-5 w-5" />
+              Export All Data
+            </Button>
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportData}
+                className="hidden"
+              />
+              <Button variant="outline" asChild className="px-6 py-3">
+                <span>
+                  <Upload className="mr-2 h-5 w-5" />
+                  Import Data
+                </span>
+              </Button>
+            </label>
+          </div>
+          
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search APIs by name, URL, or tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-gray-800/50 border-gray-600 text-gray-100"
             />
-            <Button variant="outline" asChild>
-              <span>
-                <Upload className="mr-2 h-4 w-4" />
-                Import
-              </span>
-            </Button>
-          </label>
-          <Link to="/deltapro">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Comparison
-            </Button>
-          </Link>
+          </div>
         </div>
       </div>
 
-              {/* Recent Auto-saved Configurations */}
-        <div className="pt-2">
-          <h2 className="text-lg font-semibold mb-6">Recent Auto-saved Configurations</h2>
-          {(() => {
-            const autoSavedAPIs = savedAPIs.filter(api => api.tags.includes('auto-saved'));
-            return autoSavedAPIs.length > 0 ? (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {autoSavedAPIs.slice(0, 6).map((api) => (
-                  <Card key={api.id} className="hover:shadow-md transition-shadow border-blue-200 p-0">
-                    <CardHeader className="pb-3 px-4 pt-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-sm font-medium truncate">
-                            {api.name}
-                          </CardTitle>
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
-                            {api.method} • {api.url}
-                          </p>
-                        </div>
-                        <Badge variant="secondary" className="ml-2 shrink-0 text-xs">
-                          Auto-saved
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-3 px-4">
-                      <div className="space-y-2">
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">URL:</span>
-                          <p className="truncate font-mono">{api.url}</p>
-                        </div>
-                        {api.description && (
-                          <p className="text-xs text-muted-foreground">
-                            {api.description}
-                          </p>
-                        )}
-                        <div className="flex gap-1">
-                          {api.tags.slice(0, 3).map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-3 px-4 pb-4">
-                      <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
-                        <span>Saved {new Date(api.createdAt).toLocaleTimeString()}</span>
-                        <Link to={`/deltapro?load=${api.id}`}>
-                          <Button variant="ghost" size="sm">
-                            Use in DeltaPro+
-                          </Button>
-                        </Link>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-                             <Card className="p-8">
-                 <div className="text-center py-8">
-                   <Database className="h-16 w-16 text-blue-500 mx-auto mb-6" />
-                   <p className="text-lg text-muted-foreground mb-3">
-                     DeltaPro+ automatically saves your API configurations every 2 seconds
-                   </p>
-                   <p className="text-base text-muted-foreground">
-                     These are stored locally and can be loaded anytime
-                   </p>
-                 </div>
-               </Card>
-            );
-          })()}
-        </div>
-
-        {/* Saved APIs List */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Saved API Configurations</h2>
+              {/* API Configurations - Consolidated Section */}
+        <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-600/20">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-100">API Configurations</h2>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                {savedAPIs.length} Total
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {savedAPIs.filter(api => api.tags.includes('auto-saved')).length} Auto-saved
+              </Badge>
+            </div>
+          </div>
           
           {isLoading ? (
             <div className="text-center py-12">
@@ -376,23 +316,49 @@ const Dashboard = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="pb-3 px-4">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="text-xs">
-                        <span className="text-muted-foreground">URL:</span>
-                        <p className="truncate font-mono">{api.url}</p>
+                        <span className="text-muted-foreground font-medium">URL:</span>
+                        <p className="truncate font-mono bg-gray-800/50 px-2 py-1 rounded mt-1">{api.url}</p>
                       </div>
-                      {api.description && (
-                        <p className="text-xs text-muted-foreground">
-                          {api.description}
-                        </p>
+                      
+                      {/* Headers Section */}
+                      {Object.keys(api.headers).length > 0 && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground font-medium">Headers:</span>
+                          <div className="mt-1 space-y-1">
+                            {Object.entries(api.headers).slice(0, 3).map(([key, value]) => (
+                              <div key={key} className="flex items-center gap-2 bg-gray-800/50 px-2 py-1 rounded">
+                                <span className="font-mono text-blue-300">{key}:</span>
+                                <span className="truncate text-gray-300">{value}</span>
+                              </div>
+                            ))}
+                            {Object.keys(api.headers).length > 3 && (
+                              <div className="text-gray-500 text-xs px-2">
+                                +{Object.keys(api.headers).length - 3} more headers
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
+                      
+                      {api.description && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground font-medium">Description:</span>
+                          <p className="text-gray-300 mt-1">{api.description}</p>
+                        </div>
+                      )}
+                      
                       {api.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {api.tags.map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
+                        <div className="text-xs">
+                          <span className="text-muted-foreground font-medium">Tags:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {api.tags.map((tag, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -442,62 +408,114 @@ const Dashboard = () => {
           )}
         </div>
 
-      {/* Quick Actions */}
-      <div className="pt-6">
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link to="/deltapro">
-            <Button className="px-6 py-2">
-              <Plus className="mr-2 h-4 w-4" />
-              New API Comparison
-            </Button>
-          </Link>
-          <Button variant="outline" className="px-6 py-2" onClick={handleExportData}>
-            <Download className="mr-2 h-4 w-4" />
-            Export All Data
-          </Button>
-        </div>
-      </div>
+
 
       {/* Edit API Modal */}
       {showEditModal && editingAPI && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+          <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4 text-gray-100">Edit API Configuration</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
-                <Input
-                  value={editingAPI.name}
-                  onChange={(e) => setEditingAPI({ ...editingAPI, name: e.target.value })}
-                  className="bg-gray-800 border-gray-600 text-gray-100"
-                />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                  <Input
+                    value={editingAPI.name}
+                    onChange={(e) => setEditingAPI({ ...editingAPI, name: e.target.value })}
+                    className="bg-gray-800 border-gray-600 text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">URL</label>
+                  <Input
+                    value={editingAPI.url}
+                    onChange={(e) => setEditingAPI({ ...editingAPI, url: e.target.value })}
+                    className="bg-gray-800 border-gray-600 text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                  <Input
+                    value={editingAPI.description || ''}
+                    onChange={(e) => setEditingAPI({ ...editingAPI, description: e.target.value })}
+                    className="bg-gray-800 border-gray-600 text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Tags (comma-separated)</label>
+                  <Input
+                    value={editingAPI.tags.join(', ')}
+                    onChange={(e) => setEditingAPI({ ...editingAPI, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean) })}
+                    className="bg-gray-800 border-gray-600 text-gray-100"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">URL</label>
-                <Input
-                  value={editingAPI.url}
-                  onChange={(e) => setEditingAPI({ ...editingAPI, url: e.target.value })}
-                  className="bg-gray-800 border-gray-600 text-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                <Input
-                  value={editingAPI.description || ''}
-                  onChange={(e) => setEditingAPI({ ...editingAPI, description: e.target.value })}
-                  className="bg-gray-800 border-gray-600 text-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Tags (comma-separated)</label>
-                <Input
-                  value={editingAPI.tags.join(', ')}
-                  onChange={(e) => setEditingAPI({ ...editingAPI, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean) })}
-                  className="bg-gray-800 border-gray-600 text-gray-100"
-                />
+
+              {/* Headers Management */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-gray-300">Headers</label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newHeaders = { ...editingAPI.headers };
+                      newHeaders[`header_${Object.keys(newHeaders).length + 1}`] = '';
+                      setEditingAPI({ ...editingAPI, headers: newHeaders });
+                    }}
+                    className="text-xs"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add Header
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {Object.entries(editingAPI.headers).map(([key, value]) => (
+                    <div key={key} className="flex gap-2">
+                      <Input
+                        value={key}
+                        onChange={(e) => {
+                          const newHeaders = { ...editingAPI.headers };
+                          const newKey = e.target.value;
+                          if (newKey !== key) {
+                            delete newHeaders[key];
+                            newHeaders[newKey] = value;
+                            setEditingAPI({ ...editingAPI, headers: newHeaders });
+                          }
+                        }}
+                        placeholder="Header key"
+                        className="bg-gray-800 border-gray-600 text-gray-100 text-xs"
+                      />
+                      <Input
+                        value={value}
+                        onChange={(e) => {
+                          const newHeaders = { ...editingAPI.headers };
+                          newHeaders[key] = e.target.value;
+                          setEditingAPI({ ...editingAPI, headers: newHeaders });
+                        }}
+                        placeholder="Header value"
+                        className="bg-gray-800 border-gray-600 text-gray-100 text-xs"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newHeaders = { ...editingAPI.headers };
+                          delete newHeaders[key];
+                          setEditingAPI({ ...editingAPI, headers: newHeaders });
+                        }}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 px-2"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+            
             <div className="flex gap-3 mt-6">
               <Button
                 onClick={() => handleUpdateAPI(editingAPI)}
