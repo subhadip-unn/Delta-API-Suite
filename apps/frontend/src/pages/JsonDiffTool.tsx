@@ -304,6 +304,15 @@ export default function JsonDiffTool() {
       const startTime = Date.now();
       const fullUrl = `${endpoint.baseUrl.replace(/\/$/, '')}/${endpoint.endpoint.replace(/^\//, '')}`;
       
+      // Debug logging for URL construction and headers
+      console.log('🔍 [DEBUG] Fetching API:', {
+        baseUrl: endpoint.baseUrl,
+        endpoint: endpoint.endpoint,
+        fullUrl: fullUrl,
+        headers: endpoint.headers,
+        platform: endpoint.endpoint.split('/')[1] || 'unknown'
+      });
+      
       // Use backend proxy to avoid CORS issues
               const response = await fetch('/api/proxy', {
         method: 'POST',
@@ -319,6 +328,15 @@ export default function JsonDiffTool() {
 
       const responseTime = Date.now() - startTime;
       const proxyResult = await response.json();
+      
+      // Debug logging for response
+      console.log('✅ [DEBUG] API Response:', {
+        success: proxyResult.success,
+        status: response.status,
+        responseTime: responseTime,
+        dataSize: JSON.stringify(proxyResult.data).length,
+        error: proxyResult.error
+      });
       
       if (!proxyResult.success) {
         throw new Error(proxyResult.error || 'Proxy request failed');
@@ -359,36 +377,31 @@ export default function JsonDiffTool() {
   // Platform-specific default headers that users can load instantly
   const platformHeaders = {
     ios: {
-      'User-Agent': 'CBZ-iOS-App/1.0',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'X-Platform': 'ios',
-      'X-App-Version': '1.0.0',
-      'Accept-Language': 'en-US'
+      'accept': 'application/json',
+      'cb-loc': 'IN',
+      'cb-tz': '+0530',
+      'cb-appver': '15.8',
+      'user-agent': 'CricbuzzMobile/15.8 (com.sports.iCric; build:198; iOS 17.7.1) Alamofire/4.9.1'
     },
     android: {
-      'User-Agent': 'CBZ-Android-App/1.0',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'X-Platform': 'android',
-      'X-App-Version': '1.0.0',
-      'Accept-Language': 'en-US'
-    },
-    web: {
-      'User-Agent': 'CBZ-Web-App/1.0',
-      'Accept': 'application/json, text/plain, */*',
-      'Content-Type': 'application/json',
-      'X-Platform': 'web',
-      'X-App-Version': '1.0.0',
-      'Accept-Language': 'en-US'
+      'accept': 'application/json',
+      'cb-loc': 'IN',
+      'cb-appver': '6.23.05',
+      'cb-src': 'playstore',
+      'user-agent': 'okhttp/4.12.0'
     },
     mobile: {
-      'User-Agent': 'CBZ-Mobile-Web/1.0',
-      'Accept': 'application/json, text/plain, */*',
-      'Content-Type': 'application/json',
-      'X-Platform': 'mobile',
-      'X-App-Version': '1.0.0',
-      'Accept-Language': 'en-US'
+      'accept': 'application/json',
+      'content-type': 'application/json',
+      'cb-loc': 'IN',
+      'cb-tz': '+0530',
+      'user-agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36'
+    },
+    web: {
+      'accept': 'application/json, text/plain, */*',
+      'cb-loc': 'IN',
+      'cb-tz': '+0530',
+      'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
     }
   };
 
@@ -457,6 +470,23 @@ export default function JsonDiffTool() {
   useEffect(() => {
     loadSavedConfigs();
   }, [loadSavedConfigs]);
+
+  // Handle ESC key to close modals
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (showPlatformHeaders) {
+          setShowPlatformHeaders(false);
+        }
+        if (showLoadModal) {
+          setShowLoadModal(false);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [showPlatformHeaders, showLoadModal]);
 
   // Load configuration from URL parameter (e.g., /deltapro?load=config-id)
   useEffect(() => {
@@ -1327,37 +1357,45 @@ export default function JsonDiffTool() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[85vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Platform Headers</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold">Platform Headers</h3>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowPlatformHeaders(false)}
+                  className="hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   ✕
                 </Button>
               </div>
               
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground mb-4">
+              <div className="space-y-6">
+                <p className="text-sm text-muted-foreground">
                   Choose platform-specific headers to load instantly. These will be merged with your existing headers.
                 </p>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   {Object.entries(platformHeaders).map(([platform, headers]) => (
-                    <div key={platform} className="space-y-3">
-                      <h4 className="font-medium capitalize">{platform}</h4>
-                      <div className="space-y-2">
+                    <div key={platform} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                      <h4 className="font-semibold capitalize text-lg mb-4 text-center">{platform}</h4>
+                      
+                      <div className="space-y-3 mb-6">
                         {Object.entries(headers).map(([key, value]) => (
-                          <div key={key} className="text-xs text-muted-foreground">
-                            <span className="font-mono">{key}:</span> {value}
+                          <div key={key} className="flex items-start space-x-2">
+                            <span className="font-mono text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-gray-700 dark:text-gray-300 min-w-[80px] text-center">
+                              {key}
+                            </span>
+                            <span className="text-xs text-gray-600 dark:text-gray-400 break-all">
+                              {value}
+                            </span>
                           </div>
                         ))}
                       </div>
-                      <div className="flex gap-2">
+                      
+                      <div className="flex gap-2 justify-center">
                         <Button
                           size="sm"
                           variant="outline"
@@ -1365,6 +1403,7 @@ export default function JsonDiffTool() {
                             loadPlatformHeaders(platform as keyof typeof platformHeaders, 'left');
                             setShowPlatformHeaders(false);
                           }}
+                          className="flex-1"
                         >
                           Load to Live API
                         </Button>
@@ -1375,6 +1414,7 @@ export default function JsonDiffTool() {
                             loadPlatformHeaders(platform as keyof typeof platformHeaders, 'right');
                             setShowPlatformHeaders(false);
                           }}
+                          className="flex-1"
                         >
                           Load to New API
                         </Button>
@@ -1413,6 +1453,8 @@ function EndpointPanel({
 }: EndpointPanelProps) {
   const [newHeaderKey, setNewHeaderKey] = useState('');
   const [newHeaderValue, setNewHeaderValue] = useState('');
+  const [showBaseUrlDropdown, setShowBaseUrlDropdown] = useState(false);
+  const [showEndpointDropdown, setShowEndpointDropdown] = useState(false);
 
   const handleAddHeader = () => {
     if (newHeaderKey.trim() && newHeaderValue.trim()) {
@@ -1453,24 +1495,121 @@ function EndpointPanel({
           <div className="space-y-3">
             <div>
               <Label htmlFor={`base-url-${side}`}>Base URL</Label>
-              <Input
-                id={`base-url-${side}`}
-                value={endpoint.baseUrl}
-                onChange={(e) => onUpdate({ ...endpoint, baseUrl: e.target.value })}
-                placeholder="https://api.example.com"
-                className="mt-1"
-              />
+              <div className="flex space-x-2 mt-1">
+                <Input
+                  id={`base-url-${side}`}
+                  value={endpoint.baseUrl}
+                  onChange={(e) => onUpdate({ ...endpoint, baseUrl: e.target.value })}
+                  placeholder="https://api.example.com"
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBaseUrlDropdown(!showBaseUrlDropdown)}
+                  className="px-3"
+                  title="Load Saved Base URLs"
+                >
+                  <Database className="w-4 h-4" />
+                </Button>
+              </div>
+              {/* Base URL Dropdown */}
+              {showBaseUrlDropdown && (
+                <div className="absolute z-50 mt-2 p-3 border rounded-lg bg-background/95 backdrop-blur-sm shadow-lg max-h-40 overflow-y-auto min-w-[300px]">
+                  <div className="text-xs font-medium text-muted-foreground mb-3">Saved Base URLs:</div>
+                  <div className="space-y-2">
+                    <div
+                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                      onClick={() => {
+                        onUpdate({ ...endpoint, baseUrl: 'https://apiserver.cricbuzz.com' });
+                        setShowBaseUrlDropdown(false);
+                      }}
+                    >
+                      https://apiserver.cricbuzz.com
+                    </div>
+                    <div
+                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                      onClick={() => {
+                        onUpdate({ ...endpoint, baseUrl: 'http://api.cricbuzz.stg' });
+                        setShowBaseUrlDropdown(false);
+                      }}
+                    >
+                      http://api.cricbuzz.stg
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div>
               <Label htmlFor={`endpoint-${side}`}>Endpoint</Label>
-              <Input
-                id={`endpoint-${side}`}
-                value={endpoint.endpoint}
-                onChange={(e) => onUpdate({ ...endpoint, endpoint: e.target.value })}
-                placeholder="/v1/users"
-                className="mt-1"
-              />
+              <div className="flex space-x-2 mt-1">
+                <Input
+                  id={`endpoint-${side}`}
+                  value={endpoint.endpoint}
+                  onChange={(e) => onUpdate({ ...endpoint, endpoint: e.target.value })}
+                  placeholder="/v1/users"
+                  className="mt-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowEndpointDropdown(!showEndpointDropdown)}
+                  className="px-3"
+                  title="Load Saved Endpoints"
+                >
+                  <Database className="w-4 h-4" />
+                </Button>
+              </div>
+              {/* Endpoint Dropdown */}
+              {showEndpointDropdown && (
+                <div className="absolute z-50 mt-2 p-3 border rounded-lg bg-background/95 backdrop-blur-sm shadow-lg max-h-40 overflow-y-auto min-w-[350px]">
+                  <div className="text-xs font-medium text-muted-foreground mb-3">Saved Endpoints:</div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Venues:</div>
+                    <div
+                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                      onClick={() => {
+                        onUpdate({ ...endpoint, endpoint: '/venues/v1/32' });
+                        setShowEndpointDropdown(false);
+                      }}
+                    >
+                      /venues/v1/32
+                    </div>
+                    <div
+                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                      onClick={() => {
+                        onUpdate({ ...endpoint, endpoint: '/venues/v2/31' });
+                        setShowEndpointDropdown(false);
+                      }}
+                    >
+                      /venues/v2/31
+                    </div>
+                    
+                    <div className="text-xs font-medium text-muted-foreground mb-2 mt-3">Videos:</div>
+                    <div
+                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                      onClick={() => {
+                        onUpdate({ ...endpoint, endpoint: '/a/videos/v1/plain-detail/46984' });
+                        setShowEndpointDropdown(false);
+                      }}
+                    >
+                      /a/videos/v1/plain-detail/46984
+                    </div>
+                    
+                    <div className="text-xs font-medium text-muted-foreground mb-2 mt-3">Matches:</div>
+                    <div
+                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                      onClick={() => {
+                        onUpdate({ ...endpoint, endpoint: '/m/matches/v1/scorecard/12345' });
+                        setShowEndpointDropdown(false);
+                      }}
+                    >
+                      /m/matches/v1/scorecard/12345
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
