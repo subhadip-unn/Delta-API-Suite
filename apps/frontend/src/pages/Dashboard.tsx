@@ -13,7 +13,11 @@ import {
   Activity,
   Database,
   Download,
-  Upload
+  Upload,
+  Edit,
+  Trash2,
+  Eye,
+  Copy
 } from 'lucide-react';
 import { indexedDBService, APIConfig } from '../services/indexedDB';
 
@@ -27,6 +31,10 @@ const Dashboard = () => {
     recentComparisons: 0,
     totalTags: 0
   });
+  const [editingAPI, setEditingAPI] = useState<APIConfig | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [apiToDelete, setApiToDelete] = useState<APIConfig | null>(null);
 
   // Load saved APIs from IndexedDB
   useEffect(() => {
@@ -91,6 +99,60 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error importing data:', error);
       alert('Error importing data. Please check the file format.');
+    }
+  };
+
+  // CRUD Operations
+  const handleEditAPI = (api: APIConfig) => {
+    setEditingAPI(api);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateAPI = async (updatedAPI: APIConfig) => {
+    try {
+      await indexedDBService.updateAPIConfig(updatedAPI.id, updatedAPI);
+      await loadSavedAPIs();
+      setShowEditModal(false);
+      setEditingAPI(null);
+    } catch (error) {
+      console.error('Error updating API:', error);
+      alert('Error updating API configuration');
+    }
+  };
+
+  const handleDeleteAPI = async (api: APIConfig) => {
+    setApiToDelete(api);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteAPI = async () => {
+    if (!apiToDelete) return;
+    
+    try {
+      await indexedDBService.deleteAPIConfig(apiToDelete.id);
+      await loadSavedAPIs();
+      setShowDeleteModal(false);
+      setApiToDelete(null);
+    } catch (error) {
+      console.error('Error deleting API:', error);
+      alert('Error deleting API configuration');
+    }
+  };
+
+  const handleCopyAPI = async (api: APIConfig) => {
+    try {
+      const newAPI = {
+        ...api,
+        id: crypto.randomUUID(),
+        name: `${api.name} (Copy)`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await indexedDBService.saveAPIConfig(newAPI);
+      await loadSavedAPIs();
+    } catch (error) {
+      console.error('Error copying API:', error);
+      alert('Error copying API configuration');
     }
   };
 
@@ -336,13 +398,42 @@ const Dashboard = () => {
                     </div>
                   </CardContent>
                   <CardFooter className="pt-3 px-4 pb-4">
-                    <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
-                      <span>Updated {new Date(api.updatedAt).toLocaleDateString()}</span>
-                      <Link to={`/deltapro?load=${api.id}`}>
-                        <Button variant="ghost" size="sm">
-                          Use in DeltaPro+
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs text-muted-foreground">
+                        Updated {new Date(api.updatedAt).toLocaleDateString()}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyAPI(api)}
+                          title="Copy API Configuration"
+                        >
+                          <Copy className="w-3 h-3" />
                         </Button>
-                      </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditAPI(api)}
+                          title="Edit API Configuration"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAPI(api)}
+                          title="Delete API Configuration"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                        <Link to={`/deltapro?load=${api.id}`}>
+                          <Button variant="ghost" size="sm" title="Use in DeltaPro+">
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </CardFooter>
                 </Card>
@@ -367,6 +458,98 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* Edit API Modal */}
+      {showEditModal && editingAPI && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold mb-4 text-gray-100">Edit API Configuration</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                <Input
+                  value={editingAPI.name}
+                  onChange={(e) => setEditingAPI({ ...editingAPI, name: e.target.value })}
+                  className="bg-gray-800 border-gray-600 text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">URL</label>
+                <Input
+                  value={editingAPI.url}
+                  onChange={(e) => setEditingAPI({ ...editingAPI, url: e.target.value })}
+                  className="bg-gray-800 border-gray-600 text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <Input
+                  value={editingAPI.description || ''}
+                  onChange={(e) => setEditingAPI({ ...editingAPI, description: e.target.value })}
+                  className="bg-gray-800 border-gray-600 text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Tags (comma-separated)</label>
+                <Input
+                  value={editingAPI.tags.join(', ')}
+                  onChange={(e) => setEditingAPI({ ...editingAPI, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean) })}
+                  className="bg-gray-800 border-gray-600 text-gray-100"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={() => handleUpdateAPI(editingAPI)}
+                className="flex-1"
+              >
+                Update API
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingAPI(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && apiToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold mb-4 text-gray-100">Delete API Configuration</h3>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete "{apiToDelete.name}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={confirmDeleteAPI}
+                variant="destructive"
+                className="flex-1"
+              >
+                Delete
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setApiToDelete(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1359,7 +1359,7 @@ export default function JsonDiffTool() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[85vh] overflow-y-auto"
+              className="bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-xl p-6 max-w-4xl w-full mx-4 max-h-[85vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
@@ -1381,21 +1381,21 @@ export default function JsonDiffTool() {
                 
                 <div className="grid grid-cols-2 gap-6">
                   {Object.entries(platformHeaders).map(([platform, headers]) => (
-                    <div key={platform} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                      <h4 className="font-semibold capitalize text-lg mb-4 text-center">{platform}</h4>
+                    <div key={platform} className="bg-gray-800/80 backdrop-blur-sm rounded-lg p-4 border border-gray-600/50 hover:border-gray-500/70 transition-all duration-200">
+                      <h4 className="font-semibold capitalize text-lg mb-4 text-center text-gray-100">{platform}</h4>
                       
-                      <div className="space-y-3 mb-6">
-                        {Object.entries(headers).map(([key, value]) => (
-                          <div key={key} className="flex items-start space-x-2">
-                            <span className="font-mono text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-gray-700 dark:text-gray-300 min-w-[80px] text-center">
-                              {key}
-                            </span>
-                            <span className="text-xs text-gray-600 dark:text-gray-400 break-all">
-                              {value}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                                              <div className="space-y-3 mb-6">
+                          {Object.entries(headers).map(([key, value]) => (
+                            <div key={key} className="flex items-start space-x-2">
+                              <span className="font-mono text-xs bg-gray-700/80 px-2 py-1 rounded text-gray-200 min-w-[80px] text-center border border-gray-600/50">
+                                {key}
+                              </span>
+                              <span className="text-xs text-gray-300 break-all">
+                                {value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       
                       <div className="flex gap-2 justify-center">
                         <Button
@@ -1459,6 +1459,19 @@ function EndpointPanel({
   const [newHeaderValue, setNewHeaderValue] = useState('');
   const [showBaseUrlDropdown, setShowBaseUrlDropdown] = useState(false);
   const [showEndpointDropdown, setShowEndpointDropdown] = useState(false);
+
+  // Handle ESC key to close dropdowns
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowBaseUrlDropdown(false);
+        setShowEndpointDropdown(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, []);
 
   const handleAddHeader = () => {
     if (newHeaderKey.trim() && newHeaderValue.trim()) {
