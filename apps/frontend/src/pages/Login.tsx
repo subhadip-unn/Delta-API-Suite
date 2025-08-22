@@ -15,7 +15,6 @@ import {
   GitCompare, 
   Activity,
   ArrowRight,
-  Sparkles,
   CheckCircle
 } from 'lucide-react';
 import Logo from '@/components/ui/Logo';

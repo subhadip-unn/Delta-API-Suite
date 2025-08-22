@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { GitCompare, Zap, Database } from 'lucide-react';
+import { GitCompare } from 'lucide-react';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
