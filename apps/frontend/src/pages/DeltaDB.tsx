@@ -22,6 +22,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { UserSessionService } from '../services/UserSessionService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -53,21 +54,27 @@ const DeltaDB: React.FC = () => {
   const [storageData, setStorageData] = useState<StorageItem[]>([]);
   const { toast } = useToast();
 
-  // Get all localStorage data
+  // Get all localStorage data for current user only
   const getAllStorageData = (): StorageItem[] => {
     const items: StorageItem[] = [];
     
     // Initialize default data if it doesn't exist
     initializeDefaultData();
     
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key) {
+    // Get user-specific keys only
+    const userKeys = UserSessionService.getUserStorageKeys();
+    
+    // Also include essential system keys for current user
+    const essentialKeys = ['cbz-qa-name', 'cbz-user-role', 'cbz-user-session'];
+    
+    const allKeysToProcess = [...userKeys, ...essentialKeys];
+    
+    for (const key of allKeysToProcess) {
+      if (key && localStorage.getItem(key)) {
         try {
           let parsedValue;
           let size = 0;
 
-          
           // Handle special cases for user data
           if (key === 'cbz-qa-name' || key === 'cbz-user-role') {
             const value = localStorage.getItem(key);
@@ -109,129 +116,141 @@ const DeltaDB: React.FC = () => {
     setStorageData(getAllStorageData());
   }, []);
 
-  // Initialize default data if it doesn't exist
+  // Initialize default data if it doesn't exist (user-specific)
   const initializeDefaultData = () => {
-    // Initialize default platform headers if none exist
-    if (!localStorage.getItem('deltadb-platform-headers')) {
-      const defaultHeaders = [
-        {
-          id: 'headers-ios',
-          name: 'iOS Default Headers',
-          platform: 'ios',
-          headers: {
-            'accept': 'application/json',
-            'cb-loc': 'IN',
-            'cb-tz': '+0530',
-            'cb-appver': '15.8',
-            'user-agent': 'CricbuzzMobile/15.8 (com.sports.iCric; build:198; iOS 17.7.1) Alamofire/4.9.1'
+    try {
+      // Initialize default platform headers if none exist for current user
+      const platformHeadersKey = UserSessionService.getUserStorageKey('deltadb-platform-headers');
+      if (!localStorage.getItem(platformHeadersKey)) {
+        const defaultHeaders = [
+          {
+            id: 'headers-ios',
+            name: 'iOS Default Headers',
+            platform: 'ios',
+            headers: {
+              'accept': 'application/json',
+              'cb-loc': 'IN',
+              'cb-tz': '+0530',
+              'cb-appver': '15.8',
+              'user-agent': 'CricbuzzMobile/15.8 (com.sports.iCric; build:198; iOS 17.7.1) Alamofire/4.9.1'
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'headers-android',
-          name: 'Android Default Headers',
-          platform: 'android',
-          headers: {
-            'accept': 'application/json',
-            'cb-loc': 'IN',
-            'cb-appver': '6.23.05',
-            'cb-src': 'playstore',
-            'user-agent': 'okhttp/4.12.0'
+          {
+            id: 'headers-android',
+            name: 'Android Default Headers',
+            platform: 'android',
+            headers: {
+              'accept': 'application/json',
+              'cb-loc': 'IN',
+              'cb-appver': '6.23.05',
+              'cb-src': 'playstore',
+              'user-agent': 'okhttp/4.12.0'
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'headers-mobile',
-          name: 'Mobile Web Default Headers',
-          platform: 'mobile',
-          headers: {
-            'accept': 'application/json',
-            'content-type': 'application/json',
-            'cb-loc': 'IN',
-            'cb-tz': '+0530',
-            'user-agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36'
+          {
+            id: 'headers-mobile',
+            name: 'Mobile Web Default Headers',
+            platform: 'mobile',
+            headers: {
+              'accept': 'application/json',
+              'content-type': 'application/json',
+              'cb-loc': 'IN',
+              'cb-tz': '+0530',
+              'user-agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36'
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'headers-web',
-          name: 'Web Default Headers',
-          platform: 'web',
-          headers: {
-            'accept': 'application/json, text/plain, */*',
-            'cb-loc': 'IN',
-            'cb-tz': '+0530',
-            'user-agent': 'Mozilla/5.0 (X11; Linux x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem('deltadb-platform-headers', JSON.stringify(defaultHeaders));
-    }
+          {
+            id: 'headers-web',
+            name: 'Web Default Headers',
+            platform: 'web',
+            headers: {
+              'accept': 'application/json, text/plain, */*',
+              'cb-loc': 'IN',
+              'cb-tz': '+0530',
+              'user-agent': 'Mozilla/5.0 (X11; Linux x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ];
+        localStorage.setItem(platformHeadersKey, JSON.stringify(defaultHeaders));
+      }
 
-    // Initialize default base URLs if none exist
-    if (!localStorage.getItem('deltadb-base-urls')) {
-      const defaultBaseURLs = [
-        {
-          id: 'baseurl-prod',
-          name: 'Cricbuzz Production',
-          url: 'https://apiserver.cricbuzz.com',
-          environment: 'production',
-          tags: ['cricbuzz', 'production', 'api'],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'baseurl-staging',
-          name: 'Cricbuzz Staging',
-          url: 'http://api.cricbuzz.stg',
-          environment: 'staging',
-          tags: ['cricbuzz', 'staging', 'api'],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem('deltadb-base-urls', JSON.stringify(defaultBaseURLs));
-    }
+      // Initialize default base URLs if none exist for current user
+      const baseURLsKey = UserSessionService.getUserStorageKey('deltadb-base-urls');
+      if (!localStorage.getItem(baseURLsKey)) {
+        const defaultBaseURLs = [
+          {
+            id: 'baseurl-prod',
+            name: 'Cricbuzz Production',
+            url: 'https://apiserver.cricbuzz.com',
+            environment: 'production',
+            tags: ['cricbuzz', 'production', 'api'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'baseurl-staging',
+            name: 'CCricbuzz Staging',
+            url: 'http://api.cricbuzz.stg',
+            environment: 'staging',
+            tags: ['cricbuzz', 'staging', 'api'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ];
+        localStorage.setItem(baseURLsKey, JSON.stringify(defaultBaseURLs));
+      }
 
-    // Initialize default endpoints if none exist
-    if (!localStorage.getItem('deltadb-endpoints')) {
-      const defaultEndpoints = [
-        {
-          id: 'endpoint-users',
-          name: 'Get User Details',
-          path: '/v1/users',
-          method: 'GET',
-          tags: ['users', 'get', 'v1'],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'endpoint-videos',
-          name: 'Get Video Details',
-          path: '/a/videos/v1/plain-detail',
-          method: 'GET',
-          tags: ['videos', 'get', 'v1'],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem('deltadb-endpoints', JSON.stringify(defaultEndpoints));
-    }
+      // Initialize default endpoints if none exist for current user
+      const endpointsKey = UserSessionService.getUserStorageKey('deltadb-endpoints');
+      if (!localStorage.getItem(endpointsKey)) {
+        const defaultEndpoints = [
+          {
+            id: 'endpoint-users',
+            name: 'Get User Details',
+            path: '/v1/users',
+            method: 'GET',
+            tags: ['users', 'get', 'v1'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'endpoint-videos',
+            name: 'Get Video Details',
+            path: '/a/videos/v1/plain-detail',
+            method: 'GET',
+            tags: ['videos', 'get', 'v1'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ];
+        localStorage.setItem(endpointsKey, JSON.stringify(defaultEndpoints));
+      }
 
-    // Clean up redundant keys - DeltaDB is the single source of truth
-    localStorage.removeItem('deltapro-saved-base-urls');
-    localStorage.removeItem('deltapro-saved-endpoints');
+      // Clean up any old redundant keys
+      localStorage.removeItem('deltadb-platform-headers');
+      localStorage.removeItem('deltadb-base-urls');
+      localStorage.removeItem('deltadb-endpoints');
+      localStorage.removeItem('deltapro-saved-base-urls');
+      localStorage.removeItem('deltapro-saved-endpoints');
+      localStorage.removeItem('deltadb-last-change'); // Remove the confusing tracking key
+      
+    } catch (error) {
+      console.error('Failed to initialize default data:', error);
+    }
   };
 
   // Simple namespace detection
   const getNamespaceForKey = (key: string): string => {
     if (key.startsWith('cbz-') || key === 'darkMode' || key === 'theme') return 'user';
-    if (key.startsWith('deltapro-') || key.startsWith('deltadb-')) return 'deltapro';
+    if (key.startsWith('deltapro-') || key.startsWith('deltadb-') || key.startsWith('user_data_')) return 'deltapro';
     if (key.startsWith('cbzApiDelta')) return 'system';
     return 'other';
   };
@@ -254,24 +273,40 @@ const DeltaDB: React.FC = () => {
 
   // Check if item is protected (non-deletable)
   const isProtectedItem = (key: string): boolean => {
-    return key === 'deltadb-platform-headers' || 
-           key === 'cbz-qa-name' || 
-           key === 'cbz-user-role' ||
-           key.startsWith('deltapro-saved-');
+    // Check for platform headers (both old and new user-specific keys)
+    if (key === 'deltadb-platform-headers' || key.includes('platform-headers')) {
+      return true;
+    }
+    
+    // Check for user settings
+    if (key === 'cbz-qa-name' || key === 'cbz-user-role' || key === 'cbz-user-session') {
+      return true;
+    }
+    
+    // Check for redundant keys
+    if (key.startsWith('deltapro-saved-')) {
+      return true;
+    }
+    
+    return false;
   };
 
   // Get item display info
   const getItemDisplayInfo = (item: StorageItem) => {
     const isProtected = isProtectedItem(item.key);
-    const isPlatformHeaders = item.key === 'deltadb-platform-headers';
+    const isPlatformHeaders = item.key.includes('platform-headers');
+    const isUserData = item.key.startsWith('user_data_');
     
     return {
       isProtected,
       isPlatformHeaders,
+      isUserData,
       badgeColor: isPlatformHeaders ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 
+                  isUserData ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                   isProtected ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 
                   'bg-gray-500/20 text-gray-300 border-gray-500/30',
       badgeText: isPlatformHeaders ? 'Default Headers' : 
+                 isUserData ? 'User Data' :
                  isProtected ? 'Protected' : 
                  'Standard'
     };
@@ -341,7 +376,14 @@ const DeltaDB: React.FC = () => {
       if (editingItem.key === 'cbz-qa-name' || editingItem.key === 'cbz-user-role') {
         localStorage.setItem(editingItem.key, newValue);
       } else {
-        localStorage.setItem(editingItem.key, JSON.stringify(newValue));
+        // Store in user-specific key
+        const userKey = UserSessionService.getUserStorageKey(editingItem.key);
+        localStorage.setItem(userKey, JSON.stringify(newValue));
+        
+        // Remove old global key if it exists
+        if (localStorage.getItem(editingItem.key)) {
+          localStorage.removeItem(editingItem.key);
+        }
       }
 
       setShowEditModal(false);
@@ -366,10 +408,15 @@ const DeltaDB: React.FC = () => {
     });
     window.dispatchEvent(event);
     
-    // Also use localStorage event for cross-tab sync
-    localStorage.setItem('deltadb-last-change', JSON.stringify({
-      action, key, data, timestamp: Date.now()
-    }));
+    // Use a user-specific change tracking key for cross-tab sync
+    try {
+      const changeKey = UserSessionService.getUserStorageKey('last-change');
+      localStorage.setItem(changeKey, JSON.stringify({
+        action, key, data, timestamp: Date.now()
+      }));
+    } catch (error) {
+      // User session might not be available, ignore
+    }
   };
 
   // Handle delete with proper sync
@@ -393,8 +440,16 @@ const DeltaDB: React.FC = () => {
         return;
       }
 
-      // Delete the item
+      // Delete the item from both global and user-specific locations
       localStorage.removeItem(key);
+      
+      // Also try to delete from user-specific key
+      try {
+        const userKey = UserSessionService.getUserStorageKey(key);
+        localStorage.removeItem(userKey);
+      } catch (error) {
+        // User session might not be available, ignore
+      }
       
       // Notify other components
       notifyDataChange('delete', key);
