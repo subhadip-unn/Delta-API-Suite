@@ -27,7 +27,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '../hooks/use-toast';
 
 // Simple and clean data structure
 interface StorageItem {
@@ -222,6 +222,10 @@ const DeltaDB: React.FC = () => {
       ];
       localStorage.setItem('deltadb-endpoints', JSON.stringify(defaultEndpoints));
     }
+
+    // Clean up redundant keys - DeltaDB is the single source of truth
+    localStorage.removeItem('deltapro-saved-base-urls');
+    localStorage.removeItem('deltapro-saved-endpoints');
   };
 
   // Simple namespace detection
@@ -246,6 +250,31 @@ const DeltaDB: React.FC = () => {
       other: { name: 'Other', description: 'Miscellaneous data', icon: <Database className="w-5 h-5" />, color: 'from-gray-500 to-gray-600' }
     };
     return configs[namespace as keyof typeof configs] || configs.other;
+  };
+
+  // Check if item is protected (non-deletable)
+  const isProtectedItem = (key: string): boolean => {
+    return key === 'deltadb-platform-headers' || 
+           key === 'cbz-qa-name' || 
+           key === 'cbz-user-role' ||
+           key.startsWith('deltapro-saved-');
+  };
+
+  // Get item display info
+  const getItemDisplayInfo = (item: StorageItem) => {
+    const isProtected = isProtectedItem(item.key);
+    const isPlatformHeaders = item.key === 'deltadb-platform-headers';
+    
+    return {
+      isProtected,
+      isPlatformHeaders,
+      badgeColor: isPlatformHeaders ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 
+                  isProtected ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 
+                  'bg-gray-500/20 text-gray-300 border-gray-500/30',
+      badgeText: isPlatformHeaders ? 'Default Headers' : 
+                 isProtected ? 'Protected' : 
+                 'Standard'
+    };
   };
 
   // Get storage stats
@@ -355,6 +384,12 @@ const DeltaDB: React.FC = () => {
       // Check if it's a user setting (non-deletable)
       if (key === 'cbz-qa-name' || key === 'cbz-user-role') {
         setError('User settings cannot be deleted.');
+        return;
+      }
+
+      // Check if it's a redundant key that shouldn't exist
+      if (key.startsWith('deltapro-saved-')) {
+        setError('This is a redundant data key. Please delete the main item instead.');
         return;
       }
 
@@ -656,24 +691,35 @@ const DeltaDB: React.FC = () => {
                         </div>
                         
                         <div className="ml-6 space-y-1">
-                          {items.map((item) => (
-                            <button
-                              key={item.key}
-                              onClick={() => setSelectedItem(item)}
-                              className={`w-full text-left p-2 rounded text-sm transition-all ${
-                                selectedItem?.key === item.key
-                                  ? 'bg-gradient-to-r from-green-600/20 to-emerald-600/20 text-green-300 border border-green-500/50'
-                                  : 'hover:bg-muted/30 text-muted-foreground'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="truncate font-medium">{item.key}</span>
-                                <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
-                                  {formatBytes(item.size)}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
+                          {items.map((item) => {
+                            const displayInfo = getItemDisplayInfo(item);
+                            return (
+                              <button
+                                key={item.key}
+                                onClick={() => setSelectedItem(item)}
+                                className={`w-full text-left p-2 rounded text-sm transition-all ${
+                                  selectedItem?.key === item.key
+                                    ? 'bg-gradient-to-r from-green-600/20 to-emerald-600/20 text-green-300 border border-green-500/50'
+                                    : 'hover:bg-muted/30 text-muted-foreground'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="truncate font-medium">{item.key}</span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-xs ${displayInfo.badgeColor}`}
+                                    >
+                                      {displayInfo.badgeText}
+                                    </Badge>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                                    {formatBytes(item.size)}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -714,10 +760,15 @@ const DeltaDB: React.FC = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleDelete(selectedItem.key)}
-                          className="border-red-600/50 text-red-300 hover:bg-red-900/20"
+                          disabled={isProtectedItem(selectedItem.key)}
+                          className={`${
+                            isProtectedItem(selectedItem.key)
+                              ? 'border-gray-600/50 text-gray-400 cursor-not-allowed'
+                              : 'border-red-600/50 text-red-300 hover:bg-red-900/20'
+                          }`}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          {isProtectedItem(selectedItem.key) ? 'Protected' : 'Delete'}
                         </Button>
                       </div>
                     </div>

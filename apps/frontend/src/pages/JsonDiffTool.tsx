@@ -158,6 +158,8 @@ export default function JsonDiffTool() {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showPlatformHeaders, setShowPlatformHeaders] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState<APIConfig[]>([]);
+  const [savedBaseURLs, setSavedBaseURLs] = useState<any[]>([]);
+  const [savedEndpoints, setSavedEndpoints] = useState<any[]>([]);
 
   // Load complete comparison data on component mount
   useEffect(() => {
@@ -245,33 +247,28 @@ export default function JsonDiffTool() {
   // Load saved base URLs and endpoints from DeltaDB
   const loadSavedDataFromDeltaDB = () => {
     try {
-      // Load base URLs
+      // Load base URLs directly from DeltaDB (no redundant storage)
       const savedBaseURLs = localStorage.getItem('deltadb-base-urls');
       if (savedBaseURLs) {
         const parsed = JSON.parse(savedBaseURLs);
-        // Store for use in dropdowns
-        localStorage.setItem('deltapro-saved-base-urls', JSON.stringify(parsed));
         console.log('🔄 [SYNC] Loaded base URLs from DeltaDB:', parsed);
+        // Store in component state for dropdowns
+        setSavedBaseURLs(parsed);
       }
 
-      // Load endpoints
+      // Load endpoints directly from DeltaDB (no redundant storage)
       const savedEndpoints = localStorage.getItem('deltadb-endpoints');
       if (savedEndpoints) {
         const parsed = JSON.parse(savedEndpoints);
-        // Store for use in dropdowns
-        localStorage.setItem('deltapro-saved-endpoints', JSON.stringify(parsed));
         console.log('🔄 [SYNC] Loaded endpoints from DeltaDB:', parsed);
+        // Store in component state for dropdowns
+        setSavedEndpoints(parsed);
       }
 
-      // Clear old data if DeltaDB doesn't have it
-      if (!savedBaseURLs) {
-        localStorage.removeItem('deltapro-saved-base-urls');
-        console.log('🔄 [SYNC] Cleared old base URLs data');
-      }
-      if (!savedEndpoints) {
-        localStorage.removeItem('deltapro-saved-endpoints');
-        console.log('🔄 [SYNC] Cleared old endpoints data');
-      }
+      // Clear any old redundant data
+      localStorage.removeItem('deltapro-saved-base-urls');
+      localStorage.removeItem('deltapro-saved-endpoints');
+      console.log('🔄 [SYNC] Cleaned up redundant data keys');
     } catch (error) {
       console.warn('Failed to load saved data from DeltaDB:', error);
     }
@@ -1337,6 +1334,8 @@ export default function JsonDiffTool() {
             onRemoveHeader={removeHeader}
             side="left"
             onShowPlatformHeaders={() => setShowPlatformHeaders(true)}
+            savedBaseURLs={savedBaseURLs}
+            savedEndpoints={savedEndpoints}
           />
 
           {/* Right Endpoint */}
@@ -1349,6 +1348,8 @@ export default function JsonDiffTool() {
             onRemoveHeader={removeHeader}
             side="right"
             onShowPlatformHeaders={() => setShowPlatformHeaders(true)}
+            savedBaseURLs={savedBaseURLs}
+            savedEndpoints={savedEndpoints}
           />
         </div>
 
@@ -1596,6 +1597,8 @@ interface EndpointPanelProps {
   onRemoveHeader: (endpointId: string, key: string) => void;
   side: 'left' | 'right';
   onShowPlatformHeaders: () => void;
+  savedBaseURLs: any[];
+  savedEndpoints: any[];
 }
 
 function EndpointPanel({ 
@@ -1606,7 +1609,9 @@ function EndpointPanel({
   onAddHeader, 
   onRemoveHeader, 
   side,
-  onShowPlatformHeaders
+  onShowPlatformHeaders,
+  savedBaseURLs,
+  savedEndpoints
 }: EndpointPanelProps) {
   const [newHeaderKey, setNewHeaderKey] = useState('');
   const [newHeaderValue, setNewHeaderValue] = useState('');
@@ -1688,24 +1693,24 @@ function EndpointPanel({
                 <div className="absolute z-50 mt-2 p-3 border rounded-lg bg-background/95 backdrop-blur-sm shadow-lg max-h-40 overflow-y-auto min-w-[300px]">
                   <div className="text-xs font-medium text-muted-foreground mb-3">Saved Base URLs:</div>
                   <div className="space-y-2">
-                    <div
-                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
-                      onClick={() => {
-                        onUpdate({ ...endpoint, baseUrl: 'https://apiserver.cricbuzz.com' });
-                        setShowBaseUrlDropdown(false);
-                      }}
-                    >
-                      https://apiserver.cricbuzz.com
-                    </div>
-                    <div
-                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
-                      onClick={() => {
-                        onUpdate({ ...endpoint, baseUrl: 'http://api.cricbuzz.stg' });
-                        setShowBaseUrlDropdown(false);
-                      }}
-                    >
-                      http://api.cricbuzz.stg
-                    </div>
+                    {savedBaseURLs.length > 0 ? (
+                      savedBaseURLs.map((baseURL: any) => (
+                        <div
+                          key={baseURL.id}
+                          className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                          onClick={() => {
+                            onUpdate({ ...endpoint, baseUrl: baseURL.url });
+                            setShowBaseUrlDropdown(false);
+                          }}
+                        >
+                          {baseURL.url}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-2 text-muted-foreground text-sm">
+                        No saved base URLs. Add them in DeltaDB first.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1736,47 +1741,24 @@ function EndpointPanel({
                 <div className="absolute z-50 mt-2 p-3 border rounded-lg bg-background/95 backdrop-blur-sm shadow-lg max-h-40 overflow-y-auto min-w-[350px]">
                   <div className="text-xs font-medium text-muted-foreground mb-3">Saved Endpoints:</div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">Venues:</div>
-                    <div
-                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
-                      onClick={() => {
-                        onUpdate({ ...endpoint, endpoint: '/venues/v1/32' });
-                        setShowEndpointDropdown(false);
-                      }}
-                    >
-                      /venues/v1/32
-                    </div>
-                    <div
-                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
-                      onClick={() => {
-                        onUpdate({ ...endpoint, endpoint: '/venues/v2/31' });
-                        setShowEndpointDropdown(false);
-                      }}
-                    >
-                      /venues/v2/31
-                    </div>
-                    
-                    <div className="text-xs font-medium text-muted-foreground mb-2 mt-3">Videos:</div>
-                    <div
-                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
-                      onClick={() => {
-                        onUpdate({ ...endpoint, endpoint: '/a/videos/v1/plain-detail/46984' });
-                        setShowEndpointDropdown(false);
-                      }}
-                    >
-                      /a/videos/v1/plain-detail/46984
-                    </div>
-                    
-                    <div className="text-xs font-medium text-muted-foreground mb-2 mt-3">Matches:</div>
-                    <div
-                      className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
-                      onClick={() => {
-                        onUpdate({ ...endpoint, endpoint: '/m/matches/v1/scorecard/12345' });
-                        setShowEndpointDropdown(false);
-                      }}
-                    >
-                      /m/matches/v1/scorecard/12345
-                    </div>
+                    {savedEndpoints.length > 0 ? (
+                      savedEndpoints.map((endpointItem: any) => (
+                        <div
+                          key={endpointItem.id}
+                          className="p-2 hover:bg-muted/50 rounded cursor-pointer text-sm transition-colors"
+                          onClick={() => {
+                            onUpdate({ ...endpoint, endpoint: endpointItem.path });
+                            setShowEndpointDropdown(false);
+                          }}
+                        >
+                          {endpointItem.path}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-2 text-muted-foreground text-sm">
+                        No saved endpoints. Add them in DeltaDB first.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
