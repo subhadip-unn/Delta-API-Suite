@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Database,
+import { 
+  Database, 
   Settings,
-
-  Search,
-  Download,
-  Upload,
-  Edit3,
-  Trash2,
-  Eye,
-  HardDrive,
-  Activity,
-  Users as UsersIcon,
-  BarChart3 as BarChart3Icon,
-  Save,
-  X,
-  FileText,
-  Layers,
-  User,
-  Plus
+  Search, 
+  Download, 
+  Upload, 
+  Edit3, 
+  Trash2, 
+  Eye, 
+  HardDrive, 
+  Activity, 
+  Users as UsersIcon, 
+  BarChart3 as BarChart3Icon, 
+  Save, 
+  X, 
+  FileText, 
+  Layers, 
+  User, 
+  Plus,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserSessionService } from '../services/UserSessionService';
@@ -52,6 +53,7 @@ const DeltaDB: React.FC = () => {
   const [newItemNamespace, setNewItemNamespace] = useState('user');
   const [error, setError] = useState<string | null>(null);
   const [storageData, setStorageData] = useState<StorageItem[]>([]);
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
   const { toast } = useToast();
 
   // Get all localStorage data for current user only
@@ -113,8 +115,40 @@ const DeltaDB: React.FC = () => {
 
   // Initialize storage data on component mount
   useEffect(() => {
+    initializeTheme();
     setStorageData(getAllStorageData());
   }, []);
+
+  // Initialize theme and apply it
+  const initializeTheme = () => {
+    const savedTheme = localStorage.getItem('cbz-theme-preference') as 'light' | 'dark' || 'dark';
+    setCurrentTheme(savedTheme);
+    
+    // Apply theme to document
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
+  // Toggle theme
+  const toggleTheme = () => {
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setCurrentTheme(newTheme);
+    localStorage.setItem('cbz-theme-preference', newTheme);
+    
+    // Apply theme to document
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   // Initialize default data if it doesn't exist (user-specific)
   const initializeDefaultData = () => {
@@ -302,10 +336,22 @@ const DeltaDB: React.FC = () => {
     const isPlatformHeaders = item.key.includes('platform-headers');
     const isUserData = item.key.startsWith('user_data_');
     
+    // Clean up the display name for user data keys
+    let displayName = item.key;
+    if (isUserData) {
+      // Extract meaningful part from user_data_user_subhadipdas_qaengineer_xxx_key
+      const parts = item.key.split('_');
+      if (parts.length >= 6) {
+        const dataType = parts[parts.length - 1]; // Get the last part (key)
+        displayName = dataType.charAt(0).toUpperCase() + dataType.slice(1).replace(/-/g, ' ');
+      }
+    }
+    
     return {
       isProtected,
       isPlatformHeaders,
       isUserData,
+      displayName,
       badgeColor: isPlatformHeaders ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 
                   isUserData ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                   isProtected ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 
@@ -596,36 +642,45 @@ const DeltaDB: React.FC = () => {
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent">
                   DeltaDB
                 </h1>
-                <p className="text-slate-300 text-lg">
+                <p className="text-foreground text-lg font-medium">
                   Simple & Professional Local Storage Manager
                 </p>
                 {qaName && (
-                  <p className="text-sm text-slate-400 mt-1">
-                    Welcome, <span className="text-green-400">{qaName}</span> ({userRole})
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Welcome, <span className="text-green-400 font-semibold">{qaName}</span> ({userRole})
                   </p>
                 )}
               </div>
             </div>
             
             <div className="flex items-center space-x-3">
-                                   <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={handleExportData}
-                       className="border-border text-muted-foreground hover:bg-muted/50"
-                     >
-                       <Download className="w-4 h-4 mr-2" />
-                       Export
-                     </Button>
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={handleImportData}
-                       className="border-border text-muted-foreground hover:bg-muted/50"
-                     >
-                       <Upload className="w-4 h-4 mr-2" />
-                       Import
-                     </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleTheme}
+                className="border-border text-muted-foreground hover:bg-muted/50"
+                title={`Switch to ${currentTheme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {currentTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportData}
+                className="border-border text-muted-foreground hover:bg-muted/50"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportData}
+                className="border-border text-muted-foreground hover:bg-muted/50"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import
+              </Button>
               <Button
                 onClick={() => setShowAddModal(true)}
                 className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
@@ -750,30 +805,32 @@ const DeltaDB: React.FC = () => {
                           </Badge>
                         </div>
                         
-                        <div className="ml-6 space-y-1">
+                                                <div className="ml-6 space-y-2">
                           {items.map((item) => {
                             const displayInfo = getItemDisplayInfo(item);
                             return (
                               <button
                                 key={item.key}
                                 onClick={() => setSelectedItem(item)}
-                                className={`w-full text-left p-2 rounded text-sm transition-all ${
+                                className={`w-full text-left p-3 rounded-lg text-sm transition-all border border-transparent hover:border-border/30 ${
                                   selectedItem?.key === item.key
-                                    ? 'bg-gradient-to-r from-green-600/20 to-emerald-600/20 text-green-300 border border-green-500/50'
-                                    : 'hover:bg-muted/30 text-muted-foreground'
+                                    ? 'bg-gradient-to-r from-green-600/20 to-emerald-600/20 text-green-300 border-green-500/50 shadow-lg'
+                                    : 'hover:bg-muted/20 text-foreground hover:text-foreground'
                                 }`}
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="truncate font-medium">{item.key}</span>
+                                <div className="flex items-center justify-between min-h-[2.5rem]">
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <span className="font-medium truncate" title={item.key}>
+                                      {displayInfo.displayName}
+                                    </span>
                                     <Badge 
                                       variant="outline" 
-                                      className={`text-xs ${displayInfo.badgeColor}`}
+                                      className={`text-xs flex-shrink-0 ${displayInfo.badgeColor}`}
                                     >
                                       {displayInfo.badgeText}
                                     </Badge>
                                   </div>
-                                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded flex-shrink-0 ml-2">
                                     {formatBytes(item.size)}
                                   </span>
                                 </div>
