@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import UniversalMonacoDiffViewer from '@/components/shared/UniversalMonacoDiffViewer';
-import { indexedDBService } from '@/services/indexedDB';
+
 // Types for the working comparison logic
 interface APIConfig {
   id: string;
@@ -127,23 +127,23 @@ export default function JsonDiffTool() {
   const { toast } = useToast();
   
   // Load saved configurations on component mount
-  const savedConfigs = loadLocalStorageConfigs();
+  const initialConfigs = loadLocalStorageConfigs();
   
   const [leftEndpoint, setLeftEndpoint] = useState<ApiEndpoint>({
     id: 'left',
     name: 'Live API (Current)',
-    baseUrl: savedConfigs.left.baseUrl || '',
-    endpoint: savedConfigs.left.endpoint || '',
-    headers: savedConfigs.left.headers || {},
+    baseUrl: initialConfigs.left.baseUrl || '',
+    endpoint: initialConfigs.left.endpoint || '',
+    headers: initialConfigs.left.headers || {},
     loading: false
   });
   
   const [rightEndpoint, setRightEndpoint] = useState<ApiEndpoint>({
     id: 'right',
     name: 'New API (Updated)',
-    baseUrl: savedConfigs.right.baseUrl || '',
-    endpoint: savedConfigs.right.endpoint || '',
-    headers: savedConfigs.right.headers || {},
+    baseUrl: initialConfigs.right.baseUrl || '',
+    endpoint: initialConfigs.right.endpoint || '',
+    headers: initialConfigs.right.headers || {},
     loading: false
   });
 
@@ -157,7 +157,7 @@ export default function JsonDiffTool() {
   const [orderSensitive, setOrderSensitive] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showPlatformHeaders, setShowPlatformHeaders] = useState(false);
-  const [indexedDBConfigs, setIndexedDBConfigs] = useState<APIConfig[]>([]);
+  const [savedConfigs, setSavedConfigs] = useState<APIConfig[]>([]);
 
   // Load complete comparison data on component mount
   useEffect(() => {
@@ -237,7 +237,10 @@ export default function JsonDiffTool() {
             description: `Auto-saved: ${leftEndpoint.name || 'Live API'} configuration`,
             tags: ['auto-saved', 'live-api', 'production']
           };
-          await indexedDBService.addAPIConfig(leftConfig);
+          // Save to localStorage instead of deltaDB
+          const existingConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          existingConfigs.left = leftConfig;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(existingConfigs));
           console.log('✅ [AUTO-SAVE] Left endpoint saved successfully');
           savedCount++;
         }
@@ -251,7 +254,10 @@ export default function JsonDiffTool() {
             description: `Auto-saved: ${rightEndpoint.name || 'New API'} configuration`,
             tags: ['auto-saved', 'new-api', 'staging']
           };
-          await indexedDBService.addAPIConfig(rightConfig);
+          // Save to localStorage instead of deltaDB
+          const existingConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          existingConfigs.right = rightConfig;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(existingConfigs));
           console.log('✅ [AUTO-SAVE] Right endpoint saved successfully');
           savedCount++;
         }
@@ -436,8 +442,15 @@ export default function JsonDiffTool() {
 
   const loadSavedConfigs = useCallback(async () => {
     try {
-      const configs = await indexedDBService.getAPIConfigs();
-      setIndexedDBConfigs(configs);
+      // Get from localStorage instead of deltaDB
+      const configs = [];
+      const savedConfigs = localStorage.getItem(STORAGE_KEY);
+      if (savedConfigs) {
+        const parsed = JSON.parse(savedConfigs);
+        if (parsed.left) configs.push(parsed.left);
+        if (parsed.right) configs.push(parsed.right);
+      }
+              setSavedConfigs(configs);
     } catch (error) {
       console.error('Failed to load saved configs:', error);
     }
@@ -513,8 +526,15 @@ export default function JsonDiffTool() {
 
   const loadConfigById = async (configId: string) => {
     try {
-      const configs = await indexedDBService.getAPIConfigs();
-      const config = configs.find(c => c.id === configId);
+      // Get from localStorage instead of deltaDB
+      const configs = [];
+      const savedConfigs = localStorage.getItem(STORAGE_KEY);
+      if (savedConfigs) {
+        const parsed = JSON.parse(savedConfigs);
+        if (parsed.left) configs.push(parsed.left);
+        if (parsed.right) configs.push(parsed.right);
+      }
+      const config = configs.find((c: any) => c.id === configId);
       if (config) {
         const urlParts = config.url.split('/');
         const baseUrl = urlParts.slice(0, -1).join('/');
@@ -560,7 +580,10 @@ export default function JsonDiffTool() {
           description: `Manual save: ${leftEndpoint.name || 'Live API'} configuration`,
           tags: ['manual-save', 'live-api', 'production']
         };
-        await indexedDBService.addAPIConfig(leftConfig);
+        // Save to localStorage instead of deltaDB
+        const existingConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        existingConfigs.left = leftConfig;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existingConfigs));
         console.log('✅ [MANUAL-SAVE] Left endpoint saved successfully');
         savedCount++;
       }
@@ -574,7 +597,10 @@ export default function JsonDiffTool() {
           description: `Manual save: ${rightEndpoint.name || 'New API'} configuration`,
           tags: ['manual-save', 'new-api', 'staging']
         };
-        await indexedDBService.addAPIConfig(rightConfig);
+        // Save to localStorage instead of deltaDB
+        const existingConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        existingConfigs.right = rightConfig;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existingConfigs));
         console.log('✅ [MANUAL-SAVE] Right endpoint saved successfully');
         savedCount++;
       }
@@ -1304,6 +1330,12 @@ export default function JsonDiffTool() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
             onClick={() => setShowLoadModal(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setShowLoadModal(false);
+              }
+            }}
+            tabIndex={-1}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -1323,14 +1355,14 @@ export default function JsonDiffTool() {
                 </Button>
               </div>
               
-              {indexedDBConfigs.length === 0 ? (
+              {savedConfigs.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground mb-4">No saved configurations found.</p>
                   <p className="text-sm text-muted-foreground">Save a configuration first to load it here.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {indexedDBConfigs.map((config) => (
+                  {savedConfigs.map((config: APIConfig) => (
                     <div
                       key={config.id}
                       className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
@@ -1341,7 +1373,7 @@ export default function JsonDiffTool() {
                           <h4 className="font-medium">{config.name}</h4>
                           <p className="text-sm text-muted-foreground">{config.url}</p>
                           <div className="flex gap-2 mt-2">
-                            {config.tags.map((tag, index) => (
+                            {config.tags.map((tag: string, index: number) => (
                               <Badge key={index} variant="outline" className="text-xs">
                                 {tag}
                               </Badge>
@@ -1368,6 +1400,12 @@ export default function JsonDiffTool() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
             onClick={() => setShowPlatformHeaders(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setShowPlatformHeaders(false);
+              }
+            }}
+            tabIndex={-1}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}

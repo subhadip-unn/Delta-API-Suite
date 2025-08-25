@@ -31,6 +31,19 @@ const Login = () => {
     e.preventDefault();
     if (!name.trim()) return;
 
+      // Validate name format
+    const nameRegex = /^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*[a-zA-Z0-9]+$/;
+    if (!nameRegex.test(name.trim())) {
+      alert('Name must contain only alphanumeric characters and dots. Dots cannot be at the start or end.');
+      return;
+    }
+
+    // Validate name length
+    if (name.trim().length > 50) {
+      alert('Name must be 50 characters or less.');
+      return;
+    }
+
     setIsLoading(true);
     
     // Simulate loading for better UX
@@ -234,12 +247,24 @@ const Login = () => {
                         <Input
                           id="name"
                           type="text"
-                          placeholder="Enter your full name"
+                          placeholder="Enter your name (alphanumeric + dots only)"
                           value={name}
-                          onChange={(e) => setName(e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Only allow alphanumeric and dots
+                            if (/^[a-zA-Z0-9.]*$/.test(value) && value.length <= 50) {
+                              setName(value);
+                            }
+                          }}
                           className="bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400"
                           required
+                          maxLength={50}
                         />
+                        {name && (
+                          <p className="text-xs text-slate-400">
+                            Only letters, numbers, and dots allowed. Max 50 characters.
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
