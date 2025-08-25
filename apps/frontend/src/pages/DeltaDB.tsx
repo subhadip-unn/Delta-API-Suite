@@ -274,14 +274,14 @@ const DeltaDB: React.FC = () => {
     return configs[namespace as keyof typeof configs] || configs.other;
   };
 
-  // Check if item is protected (non-deletable)
+  // Check if item is protected (cannot be deleted or edited)
   const isProtectedItem = (key: string): boolean => {
     // Check for platform headers (both old and new user-specific keys)
     if (key === 'deltadb-platform-headers' || key.includes('platform-headers')) {
       return true;
     }
     
-    // Check for user settings
+    // Check for user settings - these are CRITICAL and must be protected
     if (key === 'cbz-qa-name' || key === 'cbz-user-role' || key === 'cbz-user-session') {
       return true;
     }
@@ -345,6 +345,16 @@ const DeltaDB: React.FC = () => {
 
   // Handle edit item
   const handleEditItem = (item: StorageItem) => {
+    // Prevent editing of protected items
+    if (isProtectedItem(item.key)) {
+      toast({
+        title: "Protected Item",
+        description: "This item cannot be edited as it's protected.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setEditingItem(item);
     if (typeof item.value === 'string' || typeof item.value === 'number' || typeof item.value === 'boolean') {
       setEditValue(String(item.value));
@@ -722,9 +732,9 @@ const DeltaDB: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Left - Namespaces */}
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-1">
             <Card className="bg-card/40 border-border/50 backdrop-blur-xl">
               <CardHeader>
                 <CardTitle className="text-card-foreground flex items-center space-x-2">
@@ -807,7 +817,7 @@ const DeltaDB: React.FC = () => {
           </div>
 
           {/* Middle - Item Details */}
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-1">
             <Card className="bg-card/40 border-border/50 backdrop-blur-xl h-full">
               <CardHeader>
                 <CardTitle className="text-card-foreground flex items-center space-x-2">
@@ -824,15 +834,22 @@ const DeltaDB: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-card-foreground">{selectedItem.key}</h3>
                       <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditItem(selectedItem)}
-                          className="border-border text-muted-foreground hover:bg-muted/50"
-                        >
-                          <Edit3 className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
+                        {!isProtectedItem(selectedItem.key) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditItem(selectedItem)}
+                            className="border-border text-muted-foreground hover:bg-muted/50"
+                          >
+                            <Edit3 className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                        )}
+                        {isProtectedItem(selectedItem.key) && (
+                          <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                            Protected
+                          </Badge>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -885,7 +902,7 @@ const DeltaDB: React.FC = () => {
           </div>
 
           {/* Right - Item Content */}
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-1">
             <Card className="bg-card/40 border-border/50 backdrop-blur-xl h-full">
               <CardHeader>
                 <CardTitle className="text-card-foreground flex items-center space-x-2">
