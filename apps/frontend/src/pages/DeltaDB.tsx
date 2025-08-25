@@ -18,9 +18,7 @@ import {
   FileText, 
   Layers, 
   User, 
-  Plus,
-  Sun,
-  Moon
+  Plus
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserSessionService } from '../services/UserSessionService';
@@ -53,7 +51,6 @@ const DeltaDB: React.FC = () => {
   const [newItemNamespace, setNewItemNamespace] = useState('user');
   const [error, setError] = useState<string | null>(null);
   const [storageData, setStorageData] = useState<StorageItem[]>([]);
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
   const { toast } = useToast();
 
   // Get all localStorage data for current user only
@@ -115,48 +112,15 @@ const DeltaDB: React.FC = () => {
 
   // Initialize storage data on component mount
   useEffect(() => {
-    initializeTheme();
     setStorageData(getAllStorageData());
   }, []);
 
-  // Initialize theme and apply it
-  const initializeTheme = () => {
-    const savedTheme = localStorage.getItem('cbz-theme-preference') as 'light' | 'dark' || 'dark';
-    setCurrentTheme(savedTheme);
-    
-    // Apply theme to document
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    }
-  };
 
-  // Toggle theme
-  const toggleTheme = () => {
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    setCurrentTheme(newTheme);
-    localStorage.setItem('cbz-theme-preference', newTheme);
-    
-    // Apply theme to document
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    }
-  };
 
   // Initialize default data if it doesn't exist (user-specific)
   const initializeDefaultData = () => {
     try {
-      // Initialize theme preference if none exists
-      if (!localStorage.getItem('cbz-theme-preference')) {
-        localStorage.setItem('cbz-theme-preference', 'dark');
-      }
+      // Theme is handled by EnhancedSidebar, no need to initialize here
       
       // Initialize default platform headers if none exist for current user
       const platformHeadersKey = UserSessionService.getUserStorageKey('deltadb-platform-headers');
@@ -288,7 +252,7 @@ const DeltaDB: React.FC = () => {
 
   // Simple namespace detection
   const getNamespaceForKey = (key: string): string => {
-    if (key.startsWith('cbz-') || key === 'darkMode' || key === 'theme' || key === 'cbz-theme-preference') return 'user';
+    if (key.startsWith('cbz-') || key === 'darkMode' || key === 'theme') return 'user';
     if (key.startsWith('deltapro-') || key.startsWith('deltadb-') || key.startsWith('user_data_')) return 'deltapro';
     if (key.startsWith('cbzApiDelta')) return 'system';
     return 'other';
@@ -657,15 +621,6 @@ const DeltaDB: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={toggleTheme}
-                className="border-border text-muted-foreground hover:bg-muted/50"
-                title={`Switch to ${currentTheme === 'dark' ? 'light' : 'dark'} mode`}
-              >
-                {currentTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={handleExportData}
                 className="border-border text-muted-foreground hover:bg-muted/50"
               >
@@ -805,34 +760,39 @@ const DeltaDB: React.FC = () => {
                           </Badge>
                         </div>
                         
-                                                <div className="ml-6 space-y-2">
+                                                <div className="ml-6 space-y-3">
                           {items.map((item) => {
                             const displayInfo = getItemDisplayInfo(item);
                             return (
                               <button
                                 key={item.key}
                                 onClick={() => setSelectedItem(item)}
-                                className={`w-full text-left p-3 rounded-lg text-sm transition-all border border-transparent hover:border-border/30 ${
+                                className={`w-full text-left p-4 rounded-xl text-sm transition-all border border-transparent hover:border-border/30 hover:shadow-md ${
                                   selectedItem?.key === item.key
                                     ? 'bg-gradient-to-r from-green-600/20 to-emerald-600/20 text-green-300 border-green-500/50 shadow-lg'
                                     : 'hover:bg-muted/20 text-foreground hover:text-foreground'
                                 }`}
                               >
-                                <div className="flex items-center justify-between min-h-[2.5rem]">
-                                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <span className="font-medium truncate" title={item.key}>
-                                      {displayInfo.displayName}
+                                <div className="flex flex-col space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                      <span className="font-semibold text-sm truncate" title={item.key}>
+                                        {displayInfo.displayName}
+                                      </span>
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`text-xs flex-shrink-0 ${displayInfo.badgeColor}`}
+                                      >
+                                        {displayInfo.badgeText}
+                                      </Badge>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded flex-shrink-0 ml-2">
+                                      {formatBytes(item.size)}
                                     </span>
-                                    <Badge 
-                                      variant="outline" 
-                                      className={`text-xs flex-shrink-0 ${displayInfo.badgeColor}`}
-                                    >
-                                      {displayInfo.badgeText}
-                                    </Badge>
                                   </div>
-                                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded flex-shrink-0 ml-2">
-                                    {formatBytes(item.size)}
-                                  </span>
+                                  <div className="text-xs text-muted-foreground truncate" title={item.key}>
+                                    {item.key}
+                                  </div>
                                 </div>
                               </button>
                             );
