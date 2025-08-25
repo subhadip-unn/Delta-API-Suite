@@ -181,6 +181,46 @@ export default function JsonDiffTool() {
     loadPlatformHeadersFromDeltaDB();
     // Load saved base URLs and endpoints from DeltaDB
     loadSavedDataFromDeltaDB();
+
+    // Listen for DeltaDB data changes
+    const handleDeltaDBChange = (event: CustomEvent) => {
+      const { action, key } = event.detail;
+      console.log('🔄 [SYNC] DeltaDB change detected:', { action, key });
+      
+      if (action === 'delete' || action === 'edit' || action === 'add') {
+        // Reload data from DeltaDB
+        loadPlatformHeadersFromDeltaDB();
+        loadSavedDataFromDeltaDB();
+      }
+    };
+
+    // Listen for localStorage changes (cross-tab sync)
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'deltadb-last-change') {
+        try {
+          const change = JSON.parse(event.newValue || '{}');
+          console.log('🔄 [SYNC] Cross-tab change detected:', change);
+          
+          if (change.action === 'delete' || change.action === 'edit' || change.action === 'add') {
+            // Reload data from DeltaDB
+            loadPlatformHeadersFromDeltaDB();
+            loadSavedDataFromDeltaDB();
+          }
+        } catch (error) {
+          console.warn('Failed to parse storage change:', error);
+        }
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('deltadb-data-change', handleDeltaDBChange as EventListener);
+    window.addEventListener('storage', handleStorageChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('deltadb-data-change', handleDeltaDBChange as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Load platform headers from DeltaDB
@@ -189,13 +229,13 @@ export default function JsonDiffTool() {
       const savedHeaders = localStorage.getItem('deltadb-platform-headers');
       if (savedHeaders) {
         const parsed = JSON.parse(savedHeaders);
-        // Update the existing platformHeaders object
-        Object.keys(platformHeaders).forEach(platform => {
-          const savedHeader = parsed.find((h: any) => h.platform === platform);
-          if (savedHeader) {
-            platformHeaders[platform as keyof typeof platformHeaders] = savedHeader.headers;
-          }
+        // Create a new headers object with saved data
+        const newHeaders: Record<string, Record<string, string>> = {};
+        parsed.forEach((header: any) => {
+          newHeaders[header.platform] = header.headers;
         });
+        // Update state with new headers
+        setPlatformHeaders(prev => ({ ...prev, ...newHeaders }));
       }
     } catch (error) {
       console.warn('Failed to load platform headers from DeltaDB:', error);
@@ -211,6 +251,7 @@ export default function JsonDiffTool() {
         const parsed = JSON.parse(savedBaseURLs);
         // Store for use in dropdowns
         localStorage.setItem('deltapro-saved-base-urls', JSON.stringify(parsed));
+        console.log('🔄 [SYNC] Loaded base URLs from DeltaDB:', parsed);
       }
 
       // Load endpoints
@@ -219,6 +260,17 @@ export default function JsonDiffTool() {
         const parsed = JSON.parse(savedEndpoints);
         // Store for use in dropdowns
         localStorage.setItem('deltapro-saved-endpoints', JSON.stringify(parsed));
+        console.log('🔄 [SYNC] Loaded endpoints from DeltaDB:', parsed);
+      }
+
+      // Clear old data if DeltaDB doesn't have it
+      if (!savedBaseURLs) {
+        localStorage.removeItem('deltapro-saved-base-urls');
+        console.log('🔄 [SYNC] Cleared old base URLs data');
+      }
+      if (!savedEndpoints) {
+        localStorage.removeItem('deltapro-saved-endpoints');
+        console.log('🔄 [SYNC] Cleared old endpoints data');
       }
     } catch (error) {
       console.warn('Failed to load saved data from DeltaDB:', error);
@@ -440,8 +492,8 @@ export default function JsonDiffTool() {
     }
   }, [toast]);
 
-  // Platform-specific default headers that users can load instantly
-  const platformHeaders = {
+  // Platform-specific default headers loaded from DeltaDB
+  const [platformHeaders, setPlatformHeaders] = useState({
     ios: {
       'accept': 'application/json',
       'cb-loc': 'IN',
@@ -469,23 +521,25 @@ export default function JsonDiffTool() {
       'cb-tz': '+0530',
       'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
     }
-  };
+  });
 
   // Load platform-specific headers
-  const loadPlatformHeaders = useCallback((platform: keyof typeof platformHeaders, endpointId: 'left' | 'right') => {
-    const headers = platformHeaders[platform];
-    const updateEndpoint = endpointId === 'left' ? setLeftEndpoint : setRightEndpoint;
-    
-    updateEndpoint(prev => ({
-      ...prev,
-      headers: { ...prev.headers, ...headers }
-    }));
+  const loadPlatformHeaders = useCallback((platform: string, endpointId: 'left' | 'right') => {
+    const headers = platformHeaders[platform as keyof typeof platformHeaders];
+    if (headers) {
+      const updateEndpoint = endpointId === 'left' ? setLeftEndpoint : setRightEndpoint;
+      
+      updateEndpoint(prev => ({
+        ...prev,
+        headers: { ...prev.headers, ...headers }
+      }));
 
-    toast({
-      title: "✅ Headers Loaded",
-      description: `${platform.toUpperCase()} headers loaded for ${endpointId === 'left' ? 'Live API' : 'New API'}`,
-    });
-  }, [toast]);
+      toast({
+        title: "✅ Headers Loaded",
+        description: `${platform.toUpperCase()} headers loaded for ${endpointId === 'left' ? 'Live API' : 'New API'}`,
+      });
+    }
+  }, [platformHeaders, toast]);
 
   const loadSavedConfigs = useCallback(async () => {
     try {

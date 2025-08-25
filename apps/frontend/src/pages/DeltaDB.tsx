@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Database,
@@ -27,6 +27,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
 // Simple and clean data structure
 interface StorageItem {
@@ -49,34 +50,47 @@ const DeltaDB: React.FC = () => {
   const [newItemValue, setNewItemValue] = useState('');
   const [newItemNamespace, setNewItemNamespace] = useState('user');
   const [error, setError] = useState<string | null>(null);
+  const [storageData, setStorageData] = useState<StorageItem[]>([]);
+  const { toast } = useToast();
 
   // Get all localStorage data
   const getAllStorageData = (): StorageItem[] => {
     const items: StorageItem[] = [];
     
+    // Initialize default data if it doesn't exist
+    initializeDefaultData();
+    
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key) {
         try {
-          const value = localStorage.getItem(key);
-          if (value !== null) {
-            let parsedValue;
-            
-            // Handle special cases for user data
-            if (key === 'cbz-qa-name' || key === 'cbz-user-role') {
-              parsedValue = value; // Store as plain string
-            } else {
+          let parsedValue;
+          let size = 0;
+
+          
+          // Handle special cases for user data
+          if (key === 'cbz-qa-name' || key === 'cbz-user-role') {
+            const value = localStorage.getItem(key);
+            parsedValue = value;
+            size = value ? value.length : 0;
+          } else {
+            const value = localStorage.getItem(key);
+            if (value) {
               try {
                 parsedValue = JSON.parse(value);
+                size = JSON.stringify(parsedValue).length;
               } catch {
-                parsedValue = value; // Fallback to string if JSON parsing fails
+                parsedValue = value;
+                size = value.length;
               }
             }
-            
+          }
+          
+          if (parsedValue !== null && parsedValue !== undefined) {
             items.push({
               key,
               value: parsedValue,
-              size: typeof parsedValue === 'string' ? parsedValue.length : JSON.stringify(parsedValue).length,
+              size: size,
               lastModified: new Date().toISOString(),
               namespace: getNamespaceForKey(key)
             });
@@ -90,17 +104,137 @@ const DeltaDB: React.FC = () => {
     return items;
   };
 
+  // Initialize storage data on component mount
+  useEffect(() => {
+    setStorageData(getAllStorageData());
+  }, []);
+
+  // Initialize default data if it doesn't exist
+  const initializeDefaultData = () => {
+    // Initialize default platform headers if none exist
+    if (!localStorage.getItem('deltadb-platform-headers')) {
+      const defaultHeaders = [
+        {
+          id: 'headers-ios',
+          name: 'iOS Default Headers',
+          platform: 'ios',
+          headers: {
+            'accept': 'application/json',
+            'cb-loc': 'IN',
+            'cb-tz': '+0530',
+            'cb-appver': '15.8',
+            'user-agent': 'CricbuzzMobile/15.8 (com.sports.iCric; build:198; iOS 17.7.1) Alamofire/4.9.1'
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'headers-android',
+          name: 'Android Default Headers',
+          platform: 'android',
+          headers: {
+            'accept': 'application/json',
+            'cb-loc': 'IN',
+            'cb-appver': '6.23.05',
+            'cb-src': 'playstore',
+            'user-agent': 'okhttp/4.12.0'
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'headers-mobile',
+          name: 'Mobile Web Default Headers',
+          platform: 'mobile',
+          headers: {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+            'cb-loc': 'IN',
+            'cb-tz': '+0530',
+            'user-agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36'
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'headers-web',
+          name: 'Web Default Headers',
+          platform: 'web',
+          headers: {
+            'accept': 'application/json, text/plain, */*',
+            'cb-loc': 'IN',
+            'cb-tz': '+0530',
+            'user-agent': 'Mozilla/5.0 (X11; Linux x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem('deltadb-platform-headers', JSON.stringify(defaultHeaders));
+    }
+
+    // Initialize default base URLs if none exist
+    if (!localStorage.getItem('deltadb-base-urls')) {
+      const defaultBaseURLs = [
+        {
+          id: 'baseurl-prod',
+          name: 'Cricbuzz Production',
+          url: 'https://apiserver.cricbuzz.com',
+          environment: 'production',
+          tags: ['cricbuzz', 'production', 'api'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'baseurl-staging',
+          name: 'Cricbuzz Staging',
+          url: 'http://api.cricbuzz.stg',
+          environment: 'staging',
+          tags: ['cricbuzz', 'staging', 'api'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem('deltadb-base-urls', JSON.stringify(defaultBaseURLs));
+    }
+
+    // Initialize default endpoints if none exist
+    if (!localStorage.getItem('deltadb-endpoints')) {
+      const defaultEndpoints = [
+        {
+          id: 'endpoint-users',
+          name: 'Get User Details',
+          path: '/v1/users',
+          method: 'GET',
+          tags: ['users', 'get', 'v1'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'endpoint-videos',
+          name: 'Get Video Details',
+          path: '/a/videos/v1/plain-detail',
+          method: 'GET',
+          tags: ['videos', 'get', 'v1'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem('deltadb-endpoints', JSON.stringify(defaultEndpoints));
+    }
+  };
+
   // Simple namespace detection
   const getNamespaceForKey = (key: string): string => {
     if (key.startsWith('cbz-') || key === 'darkMode' || key === 'theme') return 'user';
-    if (key.startsWith('deltapro-')) return 'deltapro';
+    if (key.startsWith('deltapro-') || key.startsWith('deltadb-')) return 'deltapro';
     if (key.startsWith('cbzApiDelta')) return 'system';
     return 'other';
   };
 
   // Get namespace items
   const getNamespaceItems = (namespace: string): StorageItem[] => {
-    return getAllStorageData().filter(item => item.namespace === namespace);
+    return storageData.filter(item => item.namespace === namespace);
   };
 
   // Get namespace info
@@ -116,11 +250,10 @@ const DeltaDB: React.FC = () => {
 
   // Get storage stats
   const getStorageStats = () => {
-    const allItems = getAllStorageData();
-    const totalSize = allItems.reduce((sum, item) => sum + item.size, 0);
+    const totalSize = storageData.reduce((sum, item) => sum + item.size, 0);
     
     return {
-      totalItems: allItems.length,
+      totalItems: storageData.length,
       totalSize,
       namespaces: {
         user: getNamespaceItems('user').length,
@@ -187,17 +320,60 @@ const DeltaDB: React.FC = () => {
       setEditValue('');
       setSelectedItem(null);
       setError(null);
+      notifyDataChange('edit', editingItem.key);
+      // Refresh data to show updated values
+      setStorageData(getAllStorageData());
     } catch (error) {
       console.error('Failed to save:', error);
       setError('Failed to save changes. Please try again.');
     }
   };
 
-  // Handle delete item
-  const handleDeleteItem = (item: StorageItem) => {
-    if (confirm(`Are you sure you want to delete "${item.key}"?`)) {
-      localStorage.removeItem(item.key);
+  // Notify other components about data changes
+  const notifyDataChange = (action: 'add' | 'edit' | 'delete', key: string, data?: any) => {
+    // Dispatch custom event for other components to listen to
+    const event = new CustomEvent('deltadb-data-change', {
+      detail: { action, key, data, timestamp: Date.now() }
+    });
+    window.dispatchEvent(event);
+    
+    // Also use localStorage event for cross-tab sync
+    localStorage.setItem('deltadb-last-change', JSON.stringify({
+      action, key, data, timestamp: Date.now()
+    }));
+  };
+
+  // Handle delete with proper sync
+  const handleDelete = (key: string) => {
+    try {
+      // Check if it's a platform header (non-deletable)
+      if (key === 'deltadb-platform-headers') {
+        setError('Platform headers cannot be deleted. You can only modify them.');
+        return;
+      }
+      
+      // Check if it's a user setting (non-deletable)
+      if (key === 'cbz-qa-name' || key === 'cbz-user-role') {
+        setError('User settings cannot be deleted.');
+        return;
+      }
+
+      // Delete the item
+      localStorage.removeItem(key);
+      
+      // Notify other components
+      notifyDataChange('delete', key);
+      
+      // Refresh the data
+      setStorageData(getAllStorageData());
       setSelectedItem(null);
+      
+      toast({
+        title: "✅ Item Deleted",
+        description: `Successfully deleted ${key}`,
+      });
+    } catch (error) {
+      setError(`Failed to delete ${key}: ${error}`);
     }
   };
 
@@ -219,9 +395,12 @@ const DeltaDB: React.FC = () => {
       localStorage.setItem(newItemKey, JSON.stringify(value));
       
       setNewItemKey('');
-      setNewItemValue('');
-      setNewItemNamespace('user');
-      setShowAddModal(false);
+              setNewItemValue('');
+        setNewItemNamespace('user');
+        setShowAddModal(false);
+        notifyDataChange('add', newItemKey);
+        // Refresh data to show new item
+        setStorageData(getAllStorageData());
     } catch (error) {
       console.error('Failed to add item:', error);
       alert('Failed to add item');
@@ -274,6 +453,7 @@ const DeltaDB: React.FC = () => {
               localStorage.setItem(key, JSON.stringify(value));
             });
             alert('Data imported successfully');
+            notifyDataChange('add', 'imported-data'); // Indicate data was imported
           } catch (error) {
             console.error('Import failed:', error);
             alert('Failed to import data. Please check the file format.');
@@ -533,7 +713,7 @@ const DeltaDB: React.FC = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleDeleteItem(selectedItem)}
+                          onClick={() => handleDelete(selectedItem.key)}
                           className="border-red-600/50 text-red-300 hover:bg-red-900/20"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
