@@ -176,7 +176,54 @@ export default function JsonDiffTool() {
         setOrderSensitive(savedData.orderSensitive);
       }
     }
+
+    // Load platform headers from DeltaDB
+    loadPlatformHeadersFromDeltaDB();
+    // Load saved base URLs and endpoints from DeltaDB
+    loadSavedDataFromDeltaDB();
   }, []);
+
+  // Load platform headers from DeltaDB
+  const loadPlatformHeadersFromDeltaDB = () => {
+    try {
+      const savedHeaders = localStorage.getItem('deltadb-platform-headers');
+      if (savedHeaders) {
+        const parsed = JSON.parse(savedHeaders);
+        // Update the existing platformHeaders object
+        Object.keys(platformHeaders).forEach(platform => {
+          const savedHeader = parsed.find((h: any) => h.platform === platform);
+          if (savedHeader) {
+            platformHeaders[platform as keyof typeof platformHeaders] = savedHeader.headers;
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to load platform headers from DeltaDB:', error);
+    }
+  };
+
+  // Load saved base URLs and endpoints from DeltaDB
+  const loadSavedDataFromDeltaDB = () => {
+    try {
+      // Load base URLs
+      const savedBaseURLs = localStorage.getItem('deltadb-base-urls');
+      if (savedBaseURLs) {
+        const parsed = JSON.parse(savedBaseURLs);
+        // Store for use in dropdowns
+        localStorage.setItem('deltapro-saved-base-urls', JSON.stringify(parsed));
+      }
+
+      // Load endpoints
+      const savedEndpoints = localStorage.getItem('deltadb-endpoints');
+      if (savedEndpoints) {
+        const parsed = JSON.parse(savedEndpoints);
+        // Store for use in dropdowns
+        localStorage.setItem('deltapro-saved-endpoints', JSON.stringify(parsed));
+      }
+    } catch (error) {
+      console.warn('Failed to load saved data from DeltaDB:', error);
+    }
+  };
 
   // Auto-save complete comparison data when it changes (localStorage only - not DeltaDB)
   useEffect(() => {

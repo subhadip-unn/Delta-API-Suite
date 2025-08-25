@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import {
   Database,
   Activity,
   Clock,
-  TrendingUp,
+
   CheckCircle,
   AlertCircle,
   BarChart3
@@ -106,7 +106,7 @@ export default function DeltaMetrics() {
   const { qaName } = useAuth();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+
 
   // Fetch system metrics
   useEffect(() => {
@@ -120,7 +120,7 @@ export default function DeltaMetrics() {
       } catch (error) {
         console.error('Failed to fetch metrics:', error);
       } finally {
-        setLoading(false);
+
       }
     };
 

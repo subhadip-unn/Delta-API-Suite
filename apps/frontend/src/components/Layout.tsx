@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+
 import { Toaster } from '@/components/ui/toaster';
 import { EnhancedSidebar } from './EnhancedSidebar';
 
