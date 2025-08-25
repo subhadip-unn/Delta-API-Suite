@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { UserSessionService } from '@/services/UserSessionService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -225,10 +226,21 @@ export default function JsonDiffTool() {
     };
   }, []);
 
-  // Load platform headers from DeltaDB
+  // Load platform headers from DeltaDB (user-specific)
   const loadPlatformHeadersFromDeltaDB = () => {
     try {
-      const savedHeaders = localStorage.getItem('deltadb-platform-headers');
+      // Try to load from user-specific key first
+      let savedHeaders = null;
+      
+      // Try to load from user-specific key first
+      try {
+        const userKey = UserSessionService.getUserStorageKey('deltadb-platform-headers');
+        savedHeaders = localStorage.getItem(userKey);
+      } catch (error) {
+        // Fallback to global key if UserSessionService not available
+        savedHeaders = localStorage.getItem('deltadb-platform-headers');
+      }
+      
       if (savedHeaders) {
         const parsed = JSON.parse(savedHeaders);
         // Create a new headers object with saved data
@@ -238,31 +250,56 @@ export default function JsonDiffTool() {
         });
         // Update state with new headers
         setPlatformHeaders(prev => ({ ...prev, ...newHeaders }));
+        console.log('🔄 [SYNC] Loaded platform headers from DeltaDB:', newHeaders);
+      } else {
+        console.log('🔄 [SYNC] No platform headers found in DeltaDB');
       }
     } catch (error) {
       console.warn('Failed to load platform headers from DeltaDB:', error);
     }
   };
 
-  // Load saved base URLs and endpoints from DeltaDB
+  // Load saved base URLs and endpoints from DeltaDB (user-specific)
   const loadSavedDataFromDeltaDB = () => {
     try {
-      // Load base URLs directly from DeltaDB (no redundant storage)
-      const savedBaseURLs = localStorage.getItem('deltadb-base-urls');
+      // Try to load from user-specific keys first
+      let savedBaseURLs = null;
+      let savedEndpoints = null;
+      
+      try {
+        const baseURLsKey = UserSessionService.getUserStorageKey('deltadb-base-urls');
+        savedBaseURLs = localStorage.getItem(baseURLsKey);
+      } catch (error) {
+        // Fallback to global key
+        savedBaseURLs = localStorage.getItem('deltadb-base-urls');
+      }
+      
+      try {
+        const endpointsKey = UserSessionService.getUserStorageKey('deltadb-endpoints');
+        savedEndpoints = localStorage.getItem(endpointsKey);
+      } catch (error) {
+        // Fallback to global key
+        savedEndpoints = localStorage.getItem('deltadb-endpoints');
+      }
+
+      // Load base URLs
       if (savedBaseURLs) {
         const parsed = JSON.parse(savedBaseURLs);
         console.log('🔄 [SYNC] Loaded base URLs from DeltaDB:', parsed);
-        // Store in component state for dropdowns
         setSavedBaseURLs(parsed);
+      } else {
+        console.log('🔄 [SYNC] No base URLs found in DeltaDB');
+        setSavedBaseURLs([]);
       }
 
-      // Load endpoints directly from DeltaDB (no redundant storage)
-      const savedEndpoints = localStorage.getItem('deltadb-endpoints');
+      // Load endpoints
       if (savedEndpoints) {
         const parsed = JSON.parse(savedEndpoints);
         console.log('🔄 [SYNC] Loaded endpoints from DeltaDB:', parsed);
-        // Store in component state for dropdowns
         setSavedEndpoints(parsed);
+      } else {
+        console.log('🔄 [SYNC] No endpoints found in DeltaDB');
+        setSavedEndpoints([]);
       }
 
       // Clear any old redundant data

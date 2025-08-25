@@ -119,6 +119,11 @@ const DeltaDB: React.FC = () => {
   // Initialize default data if it doesn't exist (user-specific)
   const initializeDefaultData = () => {
     try {
+      // Initialize theme preference if none exists
+      if (!localStorage.getItem('cbz-theme-preference')) {
+        localStorage.setItem('cbz-theme-preference', 'dark');
+      }
+      
       // Initialize default platform headers if none exist for current user
       const platformHeadersKey = UserSessionService.getUserStorageKey('deltadb-platform-headers');
       if (!localStorage.getItem(platformHeadersKey)) {
@@ -249,7 +254,7 @@ const DeltaDB: React.FC = () => {
 
   // Simple namespace detection
   const getNamespaceForKey = (key: string): string => {
-    if (key.startsWith('cbz-') || key === 'darkMode' || key === 'theme') return 'user';
+    if (key.startsWith('cbz-') || key === 'darkMode' || key === 'theme' || key === 'cbz-theme-preference') return 'user';
     if (key.startsWith('deltapro-') || key.startsWith('deltadb-') || key.startsWith('user_data_')) return 'deltapro';
     if (key.startsWith('cbzApiDelta')) return 'system';
     return 'other';
