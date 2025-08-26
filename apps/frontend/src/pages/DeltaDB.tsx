@@ -112,6 +112,8 @@ const DeltaDB: React.FC = () => {
 
   // Initialize storage data on component mount
   useEffect(() => {
+    // Clear all existing fake data on first visit
+    clearAllFakeData();
     setStorageData(getAllStorageData());
   }, []);
 
@@ -185,57 +187,8 @@ const DeltaDB: React.FC = () => {
         localStorage.setItem(platformHeadersKey, JSON.stringify(defaultHeaders));
       }
 
-      // Initialize default base URLs if none exist for current user
-      const baseURLsKey = UserSessionService.getUserStorageKey('deltadb-base-urls');
-      if (!localStorage.getItem(baseURLsKey)) {
-        const defaultBaseURLs = [
-          {
-            id: 'baseurl-prod',
-            name: 'Cricbuzz Production',
-            url: 'https://apiserver.cricbuzz.com',
-            environment: 'production',
-            tags: ['cricbuzz', 'production', 'api'],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'baseurl-staging',
-            name: 'CCricbuzz Staging',
-            url: 'http://api.cricbuzz.stg',
-            environment: 'staging',
-            tags: ['cricbuzz', 'staging', 'api'],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        localStorage.setItem(baseURLsKey, JSON.stringify(defaultBaseURLs));
-      }
-
-      // Initialize default endpoints if none exist for current user
-      const endpointsKey = UserSessionService.getUserStorageKey('deltadb-endpoints');
-      if (!localStorage.getItem(endpointsKey)) {
-        const defaultEndpoints = [
-          {
-            id: 'endpoint-users',
-            name: 'Get User Details',
-            path: '/v1/users',
-            method: 'GET',
-            tags: ['users', 'get', 'v1'],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'endpoint-videos',
-            name: 'Get Video Details',
-            path: '/a/videos/v1/plain-detail',
-            method: 'GET',
-            tags: ['videos', 'get', 'v1'],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        localStorage.setItem(endpointsKey, JSON.stringify(defaultEndpoints));
-      }
+      // NO MORE FAKE DATA! Only platform headers are initialized
+      // Base URLs and endpoints will be created by user when needed
 
       // Clean up any old redundant keys
       localStorage.removeItem('deltadb-platform-headers');
@@ -247,6 +200,52 @@ const DeltaDB: React.FC = () => {
       
     } catch (error) {
       console.error('Failed to initialize default data:', error);
+    }
+  };
+
+  // Clear ALL existing fake data completely
+  const clearAllFakeData = () => {
+    try {
+      console.log('🧹 Starting complete fake data cleanup...');
+      
+      // Get all localStorage keys
+      const allKeys = Object.keys(localStorage);
+      let cleanedCount = 0;
+      
+      allKeys.forEach(key => {
+        if (key.includes('user_data_')) {
+          const value = localStorage.getItem(key);
+          if (value) {
+            try {
+              const parsed = JSON.parse(value);
+              // Check if it contains fake data patterns
+              if (Array.isArray(parsed)) {
+                const hasFakeData = parsed.some(item => 
+                  item.id === 'baseurl-prod' || 
+                  item.id === 'baseurl-staging' ||
+                  item.name === 'Cricbuzz Production' ||
+                  item.name === 'CCricbuzz Staging' ||
+                  item.id === 'endpoint-users' ||
+                  item.id === 'endpoint-videos' ||
+                  item.name === 'Get User Details' ||
+                  item.name === 'Get Video Details'
+                );
+                if (hasFakeData) {
+                  localStorage.removeItem(key);
+                  cleanedCount++;
+                  console.log(`🧹 Removed fake data from: ${key}`);
+                }
+              }
+            } catch (e) {
+              // Not JSON, skip
+            }
+          }
+        }
+      });
+      
+      console.log(`✅ Cleaned up ${cleanedCount} fake data entries`);
+    } catch (error) {
+      console.warn('Failed to clear fake data:', error);
     }
   };
 
@@ -274,19 +273,29 @@ const DeltaDB: React.FC = () => {
     return configs[namespace as keyof typeof configs] || configs.other;
   };
 
-  // Check if item is protected (cannot be deleted or edited)
+  // Check if item is protected (non-deletable)
   const isProtectedItem = (key: string): boolean => {
-    // Check for platform headers (both old and new user-specific keys)
+    // 🔒 CRITICAL: Protect user session (security - prevents session hijacking)
+    if (key === 'cbz-user-session') {
+      return true;
+    }
+    
+    // 🔒 CRITICAL: Protect theme preference (system-wide setting)
+    if (key === 'darkMode') {
+      return true;
+    }
+    
+    // ✅ EDITABLE: User name and role can be edited but not deleted
+    if (key === 'cbz-qa-name' || key === 'cbz-user-role') {
+      return false;
+    }
+    
+    // 🔒 PROTECTED: Platform headers (default headers - user can modify but not delete)
     if (key === 'deltadb-platform-headers' || key.includes('platform-headers')) {
       return true;
     }
     
-    // Check for user settings - these are CRITICAL and must be protected
-    if (key === 'cbz-qa-name' || key === 'cbz-user-role' || key === 'cbz-user-session') {
-      return true;
-    }
-    
-    // Check for redundant keys
+    // 🔒 PROTECTED: Redundant keys (cleanup protection)
     if (key.startsWith('deltapro-saved-')) {
       return true;
     }
@@ -307,9 +316,25 @@ const DeltaDB: React.FC = () => {
       const parts = item.key.split('_');
       if (parts.length >= 6) {
         const dataType = parts[parts.length - 1]; // Get the last part (key)
-        displayName = dataType.charAt(0).toUpperCase() + dataType.slice(1).replace(/-/g, ' ');
+        
+        // Make display names more user-friendly
+        if (dataType === 'deltadb-platform-headers') {
+          displayName = 'Platform Headers';
+        } else if (dataType === 'deltadb-base-urls') {
+          displayName = 'Base URLs';
+        } else if (dataType === 'deltadb-endpoints') {
+          displayName = 'Endpoints';
+        } else {
+          displayName = dataType.charAt(0).toUpperCase() + dataType.slice(1).replace(/-/g, ' ');
+        }
       }
     }
+    
+    // Handle specific keys with better names
+    if (item.key === 'cbz-qa-name') displayName = 'QA Engineer Name';
+    if (item.key === 'cbz-user-role') displayName = 'User Role';
+    if (item.key === 'cbz-user-session') displayName = 'User Session';
+    if (item.key === 'darkMode') displayName = 'Theme Preference';
     
     return {
       isProtected,
@@ -345,16 +370,6 @@ const DeltaDB: React.FC = () => {
 
   // Handle edit item
   const handleEditItem = (item: StorageItem) => {
-    // Prevent editing of protected items
-    if (isProtectedItem(item.key)) {
-      toast({
-        title: "Protected Item",
-        description: "This item cannot be edited as it's protected.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setEditingItem(item);
     if (typeof item.value === 'string' || typeof item.value === 'number' || typeof item.value === 'boolean') {
       setEditValue(String(item.value));
@@ -604,8 +619,8 @@ const DeltaDB: React.FC = () => {
 
     return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <div className="border-b border-border bg-card/30 backdrop-blur-xl">
+      {/* Header - Sticky to prevent disappearing */}
+      <div className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -732,9 +747,9 @@ const DeltaDB: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           {/* Left - Namespaces */}
-          <div className="xl:col-span-1">
+          <div className="lg:col-span-1">
             <Card className="bg-card/40 border-border/50 backdrop-blur-xl">
               <CardHeader>
                 <CardTitle className="text-card-foreground flex items-center space-x-2">
@@ -783,8 +798,8 @@ const DeltaDB: React.FC = () => {
                                     : 'hover:bg-muted/20 text-foreground hover:text-foreground'
                                 }`}
                               >
-                                <div className="flex flex-col space-y-2">
-                                  <div className="flex items-center justify-between">
+                                <div className="flex flex-col space-y-3">
+                                  <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                       <span className="font-semibold text-sm truncate" title={item.key}>
                                         {displayInfo.displayName}
@@ -796,7 +811,7 @@ const DeltaDB: React.FC = () => {
                                         {displayInfo.badgeText}
                                       </Badge>
                                     </div>
-                                    <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded flex-shrink-0 ml-2">
+                                    <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded flex-shrink-0 ml-3 whitespace-nowrap">
                                       {formatBytes(item.size)}
                                     </span>
                                   </div>
@@ -817,7 +832,7 @@ const DeltaDB: React.FC = () => {
           </div>
 
           {/* Middle - Item Details */}
-          <div className="xl:col-span-1">
+          <div className="lg:col-span-1">
             <Card className="bg-card/40 border-border/50 backdrop-blur-xl h-full">
               <CardHeader>
                 <CardTitle className="text-card-foreground flex items-center space-x-2">
@@ -834,22 +849,15 @@ const DeltaDB: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-card-foreground">{selectedItem.key}</h3>
                       <div className="flex space-x-2">
-                        {!isProtectedItem(selectedItem.key) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditItem(selectedItem)}
-                            className="border-border text-muted-foreground hover:bg-muted/50"
-                          >
-                            <Edit3 className="w-4 h-4 mr-2" />
-                            Edit
-                          </Button>
-                        )}
-                        {isProtectedItem(selectedItem.key) && (
-                          <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                            Protected
-                          </Badge>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditItem(selectedItem)}
+                          className="border-border text-muted-foreground hover:bg-muted/50"
+                        >
+                          <Edit3 className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -902,7 +910,7 @@ const DeltaDB: React.FC = () => {
           </div>
 
           {/* Right - Item Content */}
-          <div className="xl:col-span-1">
+          <div className="lg:col-span-1">
             <Card className="bg-card/40 border-border/50 backdrop-blur-xl h-full">
               <CardHeader>
                 <CardTitle className="text-card-foreground flex items-center space-x-2">
