@@ -28,6 +28,7 @@ import {
   validateParameter,
   type APIEndpoint 
 } from '@/lib/apiRegistry';
+import { compareJsonData, ComparisonResult } from '@/lib/comparison-engine';
 
 interface APIJourneyProps {
   onAPIExecute: (side: 'left' | 'right', request: any) => void;
@@ -54,6 +55,8 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
     environment: 'staging',
     version: 'v1'
   });
+  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
 
   // Get filtered APIs
   const filteredAPIs = searchQuery 
@@ -145,6 +148,20 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
       },
       body: requestBody
     });
+  };
+
+  // Compare responses
+  const compareResponses = async () => {
+    if (!leftResponse || !rightResponse) return;
+    
+    setIsComparing(true);
+    
+    // Simulate processing time for better UX
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const result = compareJsonData(leftResponse, rightResponse, false);
+    setComparisonResult(result);
+    setIsComparing(false);
   };
 
   // Generate preview URL
@@ -548,6 +565,109 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
           </CardContent>
         </Card>
       </div>
+
+      {/* Comparison Section */}
+      {leftResponse && rightResponse && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Zap className="w-5 h-5" />
+              <span>Response Comparison</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={compareResponses}
+                    disabled={isComparing}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isComparing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Comparing...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Compare Responses
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="text-sm text-gray-500">
+                  Left: {leftResponse?.size || 0} bytes | Right: {rightResponse?.size || 0} bytes
+                </div>
+              </div>
+              
+              {comparisonResult && (
+                <div className="space-y-4">
+                  {comparisonResult.identical ? (
+                    <div className="text-center py-8">
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-green-700 mb-2">
+                        🎉 Perfect Match!
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Both API responses are completely identical
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-red-50 p-4 rounded-lg text-center">
+                          <div className="text-2xl font-bold text-red-600">{comparisonResult.summary.missingFields}</div>
+                          <div className="text-sm text-red-700">Missing</div>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg text-center">
+                          <div className="text-2xl font-bold text-green-600">{comparisonResult.summary.extraFields}</div>
+                          <div className="text-sm text-green-700">Extra</div>
+                        </div>
+                        <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                          <div className="text-2xl font-bold text-yellow-600">{comparisonResult.summary.differentFields}</div>
+                          <div className="text-sm text-yellow-700">Changed</div>
+                        </div>
+                        <div className="bg-blue-50 p-4 rounded-lg text-center">
+                          <div className="text-2xl font-bold text-blue-600">{comparisonResult.summary.identicalFields}</div>
+                          <div className="text-sm text-blue-700">Identical</div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {comparisonResult.differences.slice(0, 10).map((diff, index) => (
+                          <div key={index} className="border rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Badge className={
+                                  diff.type === 'missing' ? 'bg-red-100 text-red-800' :
+                                  diff.type === 'extra' ? 'bg-green-100 text-green-800' :
+                                  diff.type === 'changed' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-orange-100 text-orange-800'
+                                }>
+                                  {diff.type.toUpperCase()}
+                                </Badge>
+                                <span className="font-mono text-sm text-gray-600">{diff.path}</span>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700">{diff.description}</p>
+                          </div>
+                        ))}
+                        {comparisonResult.differences.length > 10 && (
+                          <div className="text-center text-sm text-gray-500">
+                            ... and {comparisonResult.differences.length - 10} more differences
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
