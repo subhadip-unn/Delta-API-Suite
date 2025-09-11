@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import UniversalMonacoDiffViewer from '@/components/shared/UniversalMonacoDiffViewer';
+import SmartParameterPanel from '@/components/api/SmartParameterPanel';
+
 
 // Types for the working comparison logic
 interface APIConfig {
@@ -61,7 +63,7 @@ import {
   Eye,
   EyeOff,
   Info,
-  Database
+  Database,
 } from 'lucide-react';
 
 interface ApiEndpoint {
@@ -126,6 +128,7 @@ const COMPARISON_STORAGE_KEY = 'deltapro-comparison-data';
 
 export default function JsonDiffTool() {
   const { toast } = useToast();
+
   
   // Load saved configurations on component mount
   const initialConfigs = loadLocalStorageConfigs();
@@ -199,18 +202,16 @@ export default function JsonDiffTool() {
 
     // Listen for localStorage changes (cross-tab sync)
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'deltadb-last-change') {
+      // Listen for any localStorage changes that might affect our data
+      if (event.key && (event.key.includes('deltadb-') || event.key.includes('deltapro-'))) {
         try {
-          const change = JSON.parse(event.newValue || '{}');
-          console.log('🔄 [SYNC] Cross-tab change detected:', change);
+          console.log('🔄 [SYNC] Cross-tab change detected for key:', event.key);
           
-          if (change.action === 'delete' || change.action === 'edit' || change.action === 'add') {
-            // Reload data from DeltaDB
-            loadPlatformHeadersFromDeltaDB();
-            loadSavedDataFromDeltaDB();
-          }
+          // Reload data from DeltaDB
+          loadPlatformHeadersFromDeltaDB();
+          loadSavedDataFromDeltaDB();
         } catch (error) {
-          console.warn('Failed to parse storage change:', error);
+          console.warn('Failed to handle storage change:', error);
         }
       }
     };
@@ -225,6 +226,8 @@ export default function JsonDiffTool() {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
+
+
 
   // Load platform headers from DeltaDB (user-specific)
   const loadPlatformHeadersFromDeltaDB = () => {
@@ -1129,6 +1132,8 @@ export default function JsonDiffTool() {
     }));
   }, []);
 
+
+
   return (
     <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-6 pt-6 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-4">
@@ -1358,6 +1363,38 @@ export default function JsonDiffTool() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Smart Parameter Panel */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="mb-6"
+        >
+          <SmartParameterPanel
+            onApiSelect={(baseUrl, endpoint, headers) => {
+              // Auto-fill the left endpoint with selected API
+              setLeftEndpoint(prev => ({
+                ...prev,
+                baseUrl,
+                endpoint,
+                headers: { ...prev.headers, ...headers }
+              }));
+            }}
+            onResponseReceived={(response, status, responseTime) => {
+              setLeftEndpoint(prev => ({
+                ...prev,
+                response,
+                status,
+                responseTime,
+                loading: false,
+                error: undefined
+              }));
+            }}
+            loading={leftEndpoint.loading}
+            error={leftEndpoint.error}
+          />
+        </motion.div>
 
         {/* Main Content - Split Layout */}
         <div className="grid lg:grid-cols-2 gap-4">

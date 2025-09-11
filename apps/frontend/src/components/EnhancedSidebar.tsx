@@ -31,10 +31,10 @@ interface EnhancedSidebarProps {
 }
 
 export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className }: EnhancedSidebarProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Start closed
   const [isHovered, setIsHovered] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
-  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
+  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(true); // Start manually collapsed
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Check localStorage first, then fallback to system preference
     const stored = localStorage.getItem('darkMode');
@@ -53,9 +53,19 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
   const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // Initialize dark mode on component mount
+  // Initialize dark mode on component mount and listen for changes
   useEffect(() => {
     if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  // Ensure theme is applied immediately on mount
+  useEffect(() => {
+    const storedTheme = localStorage.getItem('darkMode');
+    if (storedTheme === 'true') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
@@ -86,53 +96,18 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
     onCollapseChange?.(newCollapsed);
   };
 
-  // Improved auto-hide: only auto-collapse, never auto-expand unless user explicitly opens
+  // Disable auto-hide on scroll - user controls everything manually
   useEffect(() => {
-    let lastScrollY = window.scrollY;
-    let ticking = false;
+    // No auto-collapse on scroll - user has full control
+  }, []);
 
-    const updateScrollDirection = () => {
-      const scrollY = window.scrollY;
-      
-      if (Math.abs(scrollY - lastScrollY) < 15) {
-        ticking = false;
-        return;
-      }
-
-      // Only auto-collapse on scroll down, never auto-expand
-      if (window.innerWidth >= 1024 && !isManuallyCollapsed) {
-        if (scrollY > lastScrollY && scrollY > 200) {
-          // Scrolling down - auto-collapse if not hovered and not manually controlled
-          if (!isCollapsed && !isHovered) {
-            setIsCollapsed(true);
-            onCollapseChange?.(true);
-          }
-        }
-        // Removed auto-expand on scroll up - user must manually open
-      }
-
-      lastScrollY = scrollY;
-      ticking = false;
-    };
-
-    const requestTick = () => {
-      if (!ticking) {
-        requestAnimationFrame(updateScrollDirection);
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', requestTick, { passive: true });
-    return () => window.removeEventListener('scroll', requestTick);
-  }, [isCollapsed, isHovered, isManuallyCollapsed, onCollapseChange]);
-
-  // Navigation items - Delta Suite
+  // Navigation items - Delta Suite with shorter descriptions
   const navigationItems = [
     { 
       icon: BarChart3, 
       label: 'DeltaMetrics', 
       to: '/', 
-      description: 'Dashboard & tool hub' 
+      description: 'Dashboard & tools' 
     },
     { 
       icon: () => (
@@ -142,11 +117,11 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
         </div>
       ), 
       label: 'DeltaPro+', 
-      to: '/deltapro+', 
-      description: 'Advanced JSON comparison tool' 
+      to: '/deltapro', 
+      description: 'JSON comparison tool' 
     },
-            { icon: Database, label: 'DeltaDB', to: '/deltadb', description: 'API management & organization' },
-    { icon: HelpCircle, label: 'Documentation', to: '/docs', description: 'Help and guides' },
+    { icon: Database, label: 'DeltaDB', to: '/deltadb', description: 'API management' },
+    { icon: HelpCircle, label: 'Documentation', to: '/docs', description: 'Help & guides' },
   ];
 
   const effectiveWidth = isCollapsed && !isHovered ? 'w-16' : 'w-64';
@@ -215,7 +190,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
         <div className="h-16 flex items-center justify-between px-4 border-b border-border/50">
           <div className={cn(
             "flex items-center transition-all duration-300 ease-in-out",
-            showLabels ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"
+            showLabels ? "opacity-100 translate-x-0" : "opacity-100 translate-x-0" // Always show logo
           )}>
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
@@ -278,10 +253,6 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
                     )}
                     onClick={() => {
                       setShowDocumentation(true);
-                      // If sidebar is collapsed and not hovered, allow direct action
-                      if (isCollapsed && !isHovered) {
-                        // Modal will open
-                      }
                     }}
                   >
                     <div className="flex items-center w-full">
@@ -291,6 +262,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
                       {showLabels && (
                         <div className="flex-1 text-left">
                           <div className="font-medium">{item.label}</div>
+                          <div className="text-xs text-muted-foreground/70">{item.description}</div>
                         </div>
                       )}
                     </div>
@@ -298,7 +270,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
                     {/* Animated Tooltip for collapsed state */}
                     {!showLabels && (
                       <div className={cn(
-                        "absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-md shadow-lg border transition-all duration-300 pointer-events-none whitespace-nowrap z-50",
+                        "absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-md shadow-lg border transition-all duration-200 pointer-events-none whitespace-nowrap z-50",
                         "opacity-0 scale-95 translate-x-2 group-hover/nav:opacity-100 group-hover/nav:scale-100 group-hover/nav:translate-x-0",
                         "before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-4 before:border-transparent before:border-r-popover"
                       )}>
@@ -320,17 +292,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
                     )}
                     onClick={() => {
-                      // If sidebar is collapsed and not hovered, allow direct navigation
-                      if (isCollapsed && !isHovered) {
-                        // Let the navigation happen naturally
-                        // Close mobile sidebar on navigation
-                        if (window.innerWidth < 1024) {
-                          onToggle();
-                        }
-                        return;
-                      }
-                      
-                      // Normal behavior for expanded sidebar
+                      // Close mobile sidebar on navigation
                       if (window.innerWidth < 1024) {
                         onToggle();
                       }
@@ -364,7 +326,7 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
                     {/* Animated Tooltip for collapsed state */}
                     {!showLabels && (
                       <div className={cn(
-                        "absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-md shadow-lg border transition-all duration-300 pointer-events-none whitespace-nowrap z-50",
+                        "absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-popover text-popover-foreground text-sm rounded-md shadow-lg border transition-all duration-200 pointer-events-none whitespace-nowrap z-50",
                         "opacity-0 scale-95 translate-x-2 group-hover/nav:opacity-100 group-hover/nav:scale-100 group-hover/nav:translate-x-0",
                         "before:absolute before:right-full before:top-1/2 before:-translate-y-1/2 before:border-4 before:border-transparent before:border-r-popover"
                       )}>
@@ -393,10 +355,6 @@ export const EnhancedSidebar = ({ isOpen, onToggle, onCollapseChange, className 
                       "h-auto p-2 hover:bg-accent/50 transition-colors duration-200",
                       showLabels ? "w-full justify-start" : "w-8 h-8"
                     )}
-                    onMouseEnter={() => {
-                      // Prevent sidebar auto-collapse when profile is hovered
-                      setIsHovered(true);
-                    }}
                   >
                     <div className={cn(
                       "flex items-center",

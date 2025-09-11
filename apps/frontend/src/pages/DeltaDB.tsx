@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserSessionService } from '../services/UserSessionService';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -51,6 +52,7 @@ const DeltaDB: React.FC = () => {
   const [newItemNamespace, setNewItemNamespace] = useState('user');
   const [error, setError] = useState<string | null>(null);
   const [storageData, setStorageData] = useState<StorageItem[]>([]);
+
   const { toast } = useToast();
 
   // Get all localStorage data for current user only
@@ -112,9 +114,17 @@ const DeltaDB: React.FC = () => {
 
   // Initialize storage data on component mount
   useEffect(() => {
-    // Clear all existing fake data on first visit
-    clearAllFakeData();
-    setStorageData(getAllStorageData());
+    const initializeData = async () => {
+      try {
+        // Clear all existing fake data on first visit
+        clearAllFakeData();
+        setStorageData(getAllStorageData());
+      } catch (error) {
+        console.error('Failed to initialize data:', error);
+      }
+    };
+    
+    initializeData();
   }, []);
 
 
@@ -617,7 +627,9 @@ const DeltaDB: React.FC = () => {
 
   const stats = getStorageStats();
 
-    return (
+
+
+  return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header - Sticky to prevent disappearing */}
       <div className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl shadow-sm">

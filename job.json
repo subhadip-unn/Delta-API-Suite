@@ -1,0 +1,201 @@
+{
+    "Job": {
+        "Region": null,
+        "Namespace": null,
+        "ID": "locus-mario",
+        "Name": "locus-mario",
+        "Type": "service",
+        "Priority": null,
+        "AllAtOnce": null,
+        "Datacenters": [
+            "stg",
+            "cb-sng01"
+        ],
+        "Constraints": null,
+        "Affinities": null,
+        "TaskGroups": [
+            {
+                "Name": "mario",
+                "Count": 1,
+                "Constraints": null,
+                "Affinities": null,
+                "Tasks": [
+                    {
+                        "Name": "mario",
+                        "Driver": "docker",
+                        "User": "",
+                        "Lifecycle": null,
+                        "Config": {
+                            "auth": [
+                                {
+                                    "password": "${REPO_PASSWORD}",
+                                    "server_address": "${DOCKER_REGISTRY}",
+                                    "username": "${REPO_USER}"
+                                }
+                            ],
+                            "image": "docker.cbuzz.in/cms/mario:${CIRCLE_TAG}",
+                            "ports": [
+                                "mario"
+                            ]
+                        },
+                        "Constraints": null,
+                        "Affinities": null,
+                        "Env": {
+                            "LOCUS_HOST": "${LOCUS_HOST}",
+                            "PUBLIC_URL": "/admin/ads"
+                        },
+                        "Services": [
+                           {
+                                "Id": "",
+                                "Name": "mario",
+                                "Tags": [
+                                    "locus.enable=true",
+                                    "locus.http.routers.mario.entrypoints=http,https",
+                                    "locus.http.routers.mario.rule=PathPrefix(`/admin/ads`)"
+                                ],
+                                "CanaryTags": [
+                                    "locus.enable=false"
+                                ],
+                                "EnableTagOverride": false,
+                                "PortLabel": "mario",
+                                "AddressMode": "",
+                                "Checks": [
+                                    {
+                                        "Id": "",
+                                        "Name": "",
+                                        "Type": "tcp",
+                                        "Command": "",
+                                        "Args": null,
+                                        "Path": "",
+                                        "Protocol": "",
+                                        "PortLabel": "mario",
+                                        "Expose": false,
+                                        "AddressMode": "",
+                                        "Interval": 10000000000,
+                                        "Timeout": 2000000000,
+                                        "InitialStatus": "",
+                                        "TLSSkipVerify": false,
+                                        "Header": null,
+                                        "Method": "",
+                                        "CheckRestart": null,
+                                        "GRPCService": "",
+                                        "GRPCUseTLS": false,
+                                        "TaskName": "",
+                                        "SuccessBeforePassing": 0,
+                                        "FailuresBeforeCritical": 0,
+                                        "Body": "",
+                                        "OnUpdate": ""
+                                    }
+                                ],
+                                "CheckRestart": null,
+                                "Connect": null,
+                                "Meta": null,
+                                "CanaryMeta": null,
+                                "TaskName": "",
+                                "OnUpdate": ""
+                            }
+                        ],
+                        "Resources": {
+                            "CPU": 1000,
+                            "MemoryMB": 500
+                        },
+                        "RestartPolicy": null,
+                        "Meta": null,
+                        "KillTimeout": null,
+                        "LogConfig": null,
+                        "Artifacts": null,
+                        "Vault": null,
+                        "Templates": null,
+                        "DispatchPayload": null,
+                        "VolumeMounts": null,
+                        "Leader": false,
+                        "ShutdownDelay": 0,
+                        "KillSignal": "",
+                        "Kind": "",
+                        "ScalingPolicies": null
+                    }
+                ],
+                "Spreads": null,
+                "Volumes": null,
+                "RestartPolicy": null,
+                "ReschedulePolicy": null,
+                "EphemeralDisk": null,
+                "Update": {
+                    "Stagger": null,
+                    "MaxParallel": 1,
+                    "HealthCheck": "task_states",
+                    "MinHealthyTime": 10000000000,
+                    "HealthyDeadline": 300000000000,
+                    "ProgressDeadline": null,
+                    "Canary": 1,
+                    "AutoRevert": true,
+                    "AutoPromote": true
+                },
+                "Migrate": null,
+                "Networks": [
+                    {
+                        "Mode": "",
+                        "Device": "",
+                        "CIDR": "",
+                        "IP": "",
+                        "DNS": null,
+                        "ReservedPorts": null,
+                        "DynamicPorts": [
+                            {
+                                "Label": "mario",
+                                "Value": 0,
+                                "To": 3000,
+                                "HostNetwork": "private"
+                            }
+                        ],
+                        "Hostname": "",
+                        "MBits": null
+                    }
+                ],
+                "Meta": null,
+                "Services": null,
+                "ShutdownDelay": null,
+                "StopAfterClientDisconnect": null,
+                "Scaling": {
+                    "Min": 1,
+                    "Max": 2,
+                    "Policy": null,
+                    "Enabled": true,
+                    "Type": "horizontal",
+                    "ID": "",
+                    "Namespace": "",
+                    "Target": null,
+                    "CreateIndex": 0,
+                    "ModifyIndex": 0
+                },
+                "Consul": null
+            }
+        ],
+        "Update": null,
+        "Multiregion": null,
+        "Spreads": null,
+        "Periodic": null,
+        "ParameterizedJob": null,
+        "Reschedule": null,
+        "Migrate": null,
+        "Meta": null,
+        "ConsulToken": null,
+        "VaultToken": null,
+        "Stop": null,
+        "ParentID": null,
+        "Dispatched": false,
+        "DispatchIdempotencyToken": null,
+        "Payload": null,
+        "ConsulNamespace": null,
+        "VaultNamespace": null,
+        "NomadTokenID": null,
+        "Status": null,
+        "StatusDescription": null,
+        "Stable": null,
+        "Version": null,
+        "SubmitTime": null,
+        "CreateIndex": null,
+        "ModifyIndex": null,
+        "JobModifyIndex": null
+    }
+}

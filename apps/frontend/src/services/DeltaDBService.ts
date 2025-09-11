@@ -233,49 +233,8 @@ class DeltaDBService {
       }
     }
 
-    // Initialize default base URLs if none exist
-    if (this.getBaseURLs().length === 0) {
-      const defaultBaseURLs = [
-        {
-          name: 'Cricbuzz Production',
-          url: 'https://apiserver.cricbuzz.com',
-          environment: 'production' as const,
-          tags: ['cricbuzz', 'production', 'api']
-        },
-        {
-          name: 'Cricbuzz Staging',
-          url: 'http://api.cricbuzz.stg',
-          environment: 'staging' as const,
-          tags: ['cricbuzz', 'staging', 'api']
-        }
-      ];
-
-      for (const baseURL of defaultBaseURLs) {
-        await this.saveBaseURL(baseURL);
-      }
-    }
-
-    // Initialize default endpoints if none exist
-    if (this.getEndpoints().length === 0) {
-      const defaultEndpoints = [
-        {
-          name: 'Get User Details',
-          path: '/v1/users',
-          method: 'GET' as const,
-          tags: ['users', 'get', 'v1']
-        },
-        {
-          name: 'Get Video Details',
-          path: '/a/videos/v1/plain-detail',
-          method: 'GET' as const,
-          tags: ['videos', 'get', 'v1']
-        }
-      ];
-
-      for (const endpoint of defaultEndpoints) {
-        await this.saveEndpoint(endpoint);
-      }
-    }
+    // NO MORE FAKE DATA! Only platform headers are initialized
+    // Base URLs and endpoints will be created by user when needed
   }
 
   // Private methods for saving data

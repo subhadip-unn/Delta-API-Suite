@@ -7,7 +7,7 @@ import { EnhancedSidebar } from './EnhancedSidebar';
 
 export const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Start closed
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -38,18 +38,16 @@ export const Layout = () => {
       {/* Main content area - With proper margin for fixed sidebar */}
       <div className={cn(
         "min-h-screen transition-all duration-300 ease-in-out",
-        "lg:ml-64", // Default sidebar width (256px)
-        sidebarCollapsed && "lg:ml-16" // Collapsed sidebar width (64px)
+        "lg:ml-16", // Start with collapsed sidebar width (64px)
+        !sidebarCollapsed && "lg:ml-64" // Expanded sidebar width (256px)
       )}>
         <div className="flex flex-col min-h-screen">
-
-
-        {/* Page content */}
-        <main className="flex-1 min-w-0">
-          <div className="w-full">
-            <Outlet />
-          </div>
-        </main>
+          {/* Page content */}
+          <main className="flex-1 min-w-0">
+            <div className="w-full">
+              <Outlet />
+            </div>
+          </main>
         </div>
       </div>
       <Toaster />

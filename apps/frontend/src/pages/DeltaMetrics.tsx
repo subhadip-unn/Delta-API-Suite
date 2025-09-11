@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+
 import { 
   GitCompare, 
   Radio, 
@@ -108,6 +109,7 @@ export default function DeltaMetrics() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
 
 
+
   // Fetch system metrics
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -119,8 +121,6 @@ export default function DeltaMetrics() {
         }
       } catch (error) {
         console.error('Failed to fetch metrics:', error);
-      } finally {
-
       }
     };
 
@@ -154,6 +154,8 @@ export default function DeltaMetrics() {
       default: return <AlertCircle className="w-4 h-4" />;
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -318,6 +320,20 @@ export default function DeltaMetrics() {
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Version Info */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1, duration: 0.8 }}
+          className="mt-8 text-center"
+        >
+          <div className="inline-flex items-center space-x-2 px-4 py-2 bg-muted/50 rounded-full border border-border/50">
+            <span className="text-xs text-muted-foreground font-medium">
+              Delta API Suite v1.0.0
+            </span>
+          </div>
         </motion.div>
       </div>
     </div>
