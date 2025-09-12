@@ -32,7 +32,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
     baseUrl: 'https://apiprv.cricbuzz.com',
     platform: '/m/',
     version: 'v1',
-    path: '/home/v1/index',
+    path: '/home/{version}/index',
     headers: {} as Record<string, string>,
     body: ''
   });
@@ -42,7 +42,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
     baseUrl: 'https://apiprv.cricbuzz.com',
     platform: '/m/',
     version: 'v1',
-    path: '/home/v1/index',
+    path: '/home/{version}/index',
     headers: {} as Record<string, string>,
     body: ''
   });
@@ -52,7 +52,9 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
 
   // Generate full URL
   const generateURL = (request: typeof leftRequest) => {
-    return `${request.baseUrl}${request.platform}${request.version}${request.path}`;
+    // Replace {version} in path with selected version to prevent duplication
+    const dynamicPath = request.path.replace(/{version}/g, request.version);
+    return `${request.baseUrl}${request.platform}${dynamicPath}`;
   };
 
   // Execute request
@@ -193,7 +195,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="/i/">iOS (/i/)</SelectItem>
-                    <SelectItem value="/m/">Mobile (/m/)</SelectItem>
+                    <SelectItem value="/m/">MSite (/m/)</SelectItem>
                     <SelectItem value="/w/">Website (/w/)</SelectItem>
                     <SelectItem value="/a/">Android (/a/)</SelectItem>
                     <SelectItem value="/t/">TV (/t/)</SelectItem>
@@ -405,7 +407,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="/i/">iOS (/i/)</SelectItem>
-                    <SelectItem value="/m/">Mobile (/m/)</SelectItem>
+                    <SelectItem value="/m/">MSite (/m/)</SelectItem>
                     <SelectItem value="/w/">Website (/w/)</SelectItem>
                     <SelectItem value="/a/">Android (/a/)</SelectItem>
                     <SelectItem value="/t/">TV (/t/)</SelectItem>

@@ -1,9 +1,9 @@
-import { apiConfig } from './api-config';
+import { apiLibrary } from './api-library';
 
 // Platform configurations
 export const PLATFORMS = [
   { id: 'i', name: 'iOS', prefix: '/i/', description: 'iOS Mobile App' },
-  { id: 'm', name: 'Mobile', prefix: '/m/', description: 'Mobile Website' },
+  { id: 'm', name: 'MSite', prefix: '/m/', description: 'Mobile Website' },
   { id: 'w', name: 'Website', prefix: '/w/', description: 'Desktop Website' },
   { id: 'a', name: 'Android', prefix: '/a/', description: 'Android Mobile App' },
   { id: 't', name: 'TV', prefix: '/t/', description: 'TV App' },
@@ -380,6 +380,12 @@ function extractParametersFromPath(path: string): ParameterDef[] {
 
   return matches.map(match => {
     const paramKey = match.slice(1, -1);
+    
+    // Skip system parameters that are handled by dropdowns
+    if (paramKey === 'platform' || paramKey === 'version') {
+      return null;
+    }
+    
     return PARAMETER_DEFINITIONS[paramKey] || {
       key: paramKey,
       type: 'text',
@@ -388,15 +394,15 @@ function extractParametersFromPath(path: string): ParameterDef[] {
       placeholder: `Enter ${paramKey}`,
       validation: { pattern: '^.+$' }
     };
-  });
+  }).filter((param): param is ParameterDef => param !== null); // Remove null values with type guard
 }
 
-// Generate API catalog from api.config.ts
+// Generate API catalog from api-library.ts
 function generateAPICatalog(): APIEndpoint[] {
   const catalog: APIEndpoint[] = [];
   
-  // Process each category in apiConfig
-  Object.entries(apiConfig).forEach(([categoryKey, categoryValue]) => {
+  // Process each category in apiLibrary
+  Object.entries(apiLibrary).forEach(([categoryKey, categoryValue]) => {
     if (typeof categoryValue === 'object' && categoryValue !== null) {
       Object.entries(categoryValue).forEach(([apiKey, apiPath]) => {
         if (typeof apiPath === 'string') {
@@ -528,23 +534,16 @@ export function generateFullURL(
 ): string {
   let fullPath = pathTemplate;
   
-  // Replace version placeholder - handle both ${setAPIVersion()} and /v1/ patterns
-  fullPath = fullPath.replace(/\$\{setAPIVersion\(\)\}/g, version);
-  fullPath = fullPath.replace(/\/v\d+\//g, `/${version}/`);
+  // Replace platform placeholder
+  fullPath = fullPath.replace(/{platform}/g, platform);
   
-  // Replace parameters
+  // Replace version placeholder
+  fullPath = fullPath.replace(/{version}/g, version);
+  
+  // Replace other parameters
   Object.entries(parameters).forEach(([key, value]) => {
     fullPath = fullPath.replace(`{${key}}`, value);
   });
-  
-  // Ensure platform prefix is correct
-  const platformConfig = PLATFORMS.find(p => p.id === platform);
-  if (platformConfig) {
-    // Remove any existing platform prefix
-    fullPath = fullPath.replace(/^\/[imwabvt]\//, '/');
-    // Add the correct platform prefix
-    fullPath = platformConfig.prefix + fullPath.replace(/^\//, '');
-  }
   
   return baseUrl + fullPath;
 }
