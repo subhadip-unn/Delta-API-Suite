@@ -19,15 +19,15 @@ import {
 } from 'lucide-react';
 
 interface AdhocCompareProps {
-  onAPIExecute: (side: 'left' | 'right', request: any) => void;
-  leftResponse: any;
-  rightResponse: any;
-  loading: { left: boolean; right: boolean };
-  error: { left: string | null; right: string | null };
+  onAPIExecute: (side: 'source' | 'target', request: any) => void;
+  sourceResponse: any;
+  targetResponse: any;
+  loading: { source: boolean; target: boolean };
+  error: { source: string | null; target: string | null };
 }
 
-export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse, loading, error }: AdhocCompareProps) {
-  const [leftRequest, setLeftRequest] = useState({
+export default function AdhocCompare({ onAPIExecute, sourceResponse, targetResponse, loading, error }: AdhocCompareProps) {
+  const [sourceRequest, setSourceRequest] = useState({
     method: 'GET',
     baseUrl: 'https://apiprv.cricbuzz.com',
     platform: '/m/',
@@ -37,7 +37,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
     body: ''
   });
 
-  const [rightRequest, setRightRequest] = useState({
+  const [targetRequest, setTargetRequest] = useState({
     method: 'GET',
     baseUrl: 'https://apiprv.cricbuzz.com',
     platform: '/m/',
@@ -51,15 +51,15 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
   const [newHeaderValue, setNewHeaderValue] = useState('');
 
   // Generate full URL
-  const generateURL = (request: typeof leftRequest) => {
+  const generateURL = (request: typeof sourceRequest) => {
     // Replace {version} in path with selected version to prevent duplication
     const dynamicPath = request.path.replace(/{version}/g, request.version);
     return `${request.baseUrl}${request.platform}${dynamicPath}`;
   };
 
   // Execute request
-  const executeRequest = async (side: 'left' | 'right') => {
-    const request = side === 'left' ? leftRequest : rightRequest;
+  const executeRequest = async (side: 'source' | 'target') => {
+    const request = side === 'source' ? sourceRequest : targetRequest;
     const fullURL = generateURL(request);
 
     onAPIExecute(side, {
@@ -75,18 +75,18 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
   };
 
   // Add header
-  const addHeader = (side: 'left' | 'right') => {
+  const addHeader = (side: 'source' | 'target') => {
     if (!newHeaderKey || !newHeaderValue) return;
 
-    const updateRequest = (prev: typeof leftRequest) => ({
+    const updateRequest = (prev: typeof sourceRequest) => ({
       ...prev,
       headers: { ...prev.headers, [newHeaderKey]: newHeaderValue }
     });
 
-    if (side === 'left') {
-      setLeftRequest(updateRequest);
+    if (side === 'source') {
+      setSourceRequest(updateRequest);
     } else {
-      setRightRequest(updateRequest);
+      setTargetRequest(updateRequest);
     }
 
     setNewHeaderKey('');
@@ -94,22 +94,22 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
   };
 
   // Remove header
-  const removeHeader = (side: 'left' | 'right', key: string) => {
-    const updateRequest = (prev: typeof leftRequest) => {
+  const removeHeader = (side: 'source' | 'target', key: string) => {
+    const updateRequest = (prev: typeof sourceRequest) => {
       const newHeaders = { ...prev.headers };
       delete newHeaders[key];
       return { ...prev, headers: newHeaders };
     };
 
-    if (side === 'left') {
-      setLeftRequest(updateRequest);
+    if (side === 'source') {
+      setSourceRequest(updateRequest);
     } else {
-      setRightRequest(updateRequest);
+      setTargetRequest(updateRequest);
     }
   };
 
   // Parse cURL
-  const parseCURL = async (side: 'left' | 'right', curlText: string) => {
+  const parseCURL = async (side: 'source' | 'target', curlText: string) => {
     try {
       const response = await fetch('/api/curl/parse', {
         method: 'POST',
@@ -122,7 +122,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
       const data = await response.json();
       
       if (data.success) {
-        const updateRequest = (prev: typeof leftRequest) => ({
+        const updateRequest = (prev: typeof sourceRequest) => ({
           ...prev,
           method: data.method,
           url: data.url,
@@ -130,10 +130,10 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
           body: data.body ? JSON.stringify(data.body, null, 2) : ''
         });
 
-        if (side === 'left') {
-          setLeftRequest(updateRequest);
+        if (side === 'source') {
+          setSourceRequest(updateRequest);
         } else {
-          setRightRequest(updateRequest);
+          setTargetRequest(updateRequest);
         }
       }
     } catch (error) {
@@ -144,12 +144,12 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Request */}
+        {/* Source Request */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Left Request</span>
+              <span>Source Request</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -157,8 +157,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <Label className="text-xs">Method</Label>
-                <Select value={leftRequest.method} onValueChange={(value) => 
-                  setLeftRequest(prev => ({ ...prev, method: value }))
+                <Select value={sourceRequest.method} onValueChange={(value) => 
+                  setSourceRequest(prev => ({ ...prev, method: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -175,8 +175,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
               <div className="col-span-3">
                 <Label className="text-xs">Base URL</Label>
                 <Input
-                  value={leftRequest.baseUrl}
-                  onChange={(e) => setLeftRequest(prev => ({ ...prev, baseUrl: e.target.value }))}
+                  value={sourceRequest.baseUrl}
+                  onChange={(e) => setSourceRequest(prev => ({ ...prev, baseUrl: e.target.value }))}
                   placeholder="https://apiprv.cricbuzz.com"
                   className="mt-1"
                 />
@@ -187,8 +187,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Platform</Label>
-                <Select value={leftRequest.platform} onValueChange={(value) => 
-                  setLeftRequest(prev => ({ ...prev, platform: value }))
+                <Select value={sourceRequest.platform} onValueChange={(value) => 
+                  setSourceRequest(prev => ({ ...prev, platform: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -206,8 +206,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
               </div>
               <div>
                 <Label className="text-xs">Version</Label>
-                <Select value={leftRequest.version} onValueChange={(value) => 
-                  setLeftRequest(prev => ({ ...prev, version: value }))
+                <Select value={sourceRequest.version} onValueChange={(value) => 
+                  setSourceRequest(prev => ({ ...prev, version: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -224,8 +224,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Path</Label>
               <Input
-                value={leftRequest.path}
-                onChange={(e) => setLeftRequest(prev => ({ ...prev, path: e.target.value }))}
+                value={sourceRequest.path}
+                onChange={(e) => setSourceRequest(prev => ({ ...prev, path: e.target.value }))}
                 placeholder="/home/v1/index"
                 className="mt-1"
               />
@@ -235,7 +235,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Preview URL</Label>
               <div className="p-2 bg-muted rounded text-xs font-mono break-all mt-1">
-                {generateURL(leftRequest)}
+                {generateURL(sourceRequest)}
               </div>
             </div>
 
@@ -243,7 +243,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Headers</Label>
               <div className="space-y-2 mt-1">
-                {Object.entries(leftRequest.headers).map(([key, value]) => (
+                {Object.entries(sourceRequest.headers).map(([key, value]) => (
                   <div key={key} className="flex items-center space-x-2">
                     <Input
                       value={key}
@@ -258,7 +258,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => removeHeader('left', key)}
+                      onClick={() => removeHeader('source', key)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -280,7 +280,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => addHeader('left')}
+                    onClick={() => addHeader('source')}
                   >
                     Add
                   </Button>
@@ -292,8 +292,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Body (JSON)</Label>
               <textarea
-                value={leftRequest.body}
-                onChange={(e) => setLeftRequest(prev => ({ ...prev, body: e.target.value }))}
+                value={sourceRequest.body}
+                onChange={(e) => setSourceRequest(prev => ({ ...prev, body: e.target.value }))}
                 placeholder='{"key": "value"}'
                 className="w-full h-20 p-2 border rounded text-xs font-mono mt-1"
               />
@@ -308,7 +308,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   className="text-xs"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      parseCURL('left', e.currentTarget.value);
+                      parseCURL('source', e.currentTarget.value);
                     }
                   }}
                 />
@@ -317,7 +317,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   variant="outline"
                   onClick={() => {
                     const input = document.querySelector('input[placeholder="curl -X GET https://..."]') as HTMLInputElement;
-                    if (input?.value) parseCURL('left', input.value);
+                    if (input?.value) parseCURL('source', input.value);
                   }}
                 >
                   <Copy className="w-3 h-3" />
@@ -327,11 +327,11 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
 
             {/* Execute Button */}
             <Button 
-              onClick={() => executeRequest('left')}
-              disabled={loading.left}
+              onClick={() => executeRequest('source')}
+              disabled={loading.source}
               className="w-full"
             >
-              {loading.left ? (
+              {loading.source ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Executing...
@@ -345,23 +345,23 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             </Button>
 
             {/* Error Display */}
-            {error.left && (
+            {error.source && (
               <div className="p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
                 <div className="flex items-center space-x-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{error.left}</span>
+                  <span>{error.source}</span>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Right Request */}
+        {/* Target Request */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span>Right Request</span>
+              <span>Target Request</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -369,8 +369,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <Label className="text-xs">Method</Label>
-                <Select value={rightRequest.method} onValueChange={(value) => 
-                  setRightRequest(prev => ({ ...prev, method: value }))
+                <Select value={targetRequest.method} onValueChange={(value) => 
+                  setTargetRequest(prev => ({ ...prev, method: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -387,8 +387,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
               <div className="col-span-3">
                 <Label className="text-xs">Base URL</Label>
                 <Input
-                  value={rightRequest.baseUrl}
-                  onChange={(e) => setRightRequest(prev => ({ ...prev, baseUrl: e.target.value }))}
+                  value={targetRequest.baseUrl}
+                  onChange={(e) => setTargetRequest(prev => ({ ...prev, baseUrl: e.target.value }))}
                   placeholder="https://apiprv.cricbuzz.com"
                   className="mt-1"
                 />
@@ -399,8 +399,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Platform</Label>
-                <Select value={rightRequest.platform} onValueChange={(value) => 
-                  setRightRequest(prev => ({ ...prev, platform: value }))
+                <Select value={targetRequest.platform} onValueChange={(value) => 
+                  setTargetRequest(prev => ({ ...prev, platform: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -418,8 +418,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
               </div>
               <div>
                 <Label className="text-xs">Version</Label>
-                <Select value={rightRequest.version} onValueChange={(value) => 
-                  setRightRequest(prev => ({ ...prev, version: value }))
+                <Select value={targetRequest.version} onValueChange={(value) => 
+                  setTargetRequest(prev => ({ ...prev, version: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -436,8 +436,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Path</Label>
               <Input
-                value={rightRequest.path}
-                onChange={(e) => setRightRequest(prev => ({ ...prev, path: e.target.value }))}
+                value={targetRequest.path}
+                onChange={(e) => setTargetRequest(prev => ({ ...prev, path: e.target.value }))}
                 placeholder="/home/v1/index"
                 className="mt-1"
               />
@@ -447,7 +447,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Preview URL</Label>
               <div className="p-2 bg-muted rounded text-xs font-mono break-all mt-1">
-                {generateURL(rightRequest)}
+                {generateURL(targetRequest)}
               </div>
             </div>
 
@@ -455,7 +455,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Headers</Label>
               <div className="space-y-2 mt-1">
-                {Object.entries(rightRequest.headers).map(([key, value]) => (
+                {Object.entries(targetRequest.headers).map(([key, value]) => (
                   <div key={key} className="flex items-center space-x-2">
                     <Input
                       value={key}
@@ -470,7 +470,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => removeHeader('right', key)}
+                      onClick={() => removeHeader('target', key)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -492,7 +492,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => addHeader('right')}
+                    onClick={() => addHeader('target')}
                   >
                     Add
                   </Button>
@@ -504,8 +504,8 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
             <div>
               <Label className="text-xs">Body (JSON)</Label>
               <textarea
-                value={rightRequest.body}
-                onChange={(e) => setRightRequest(prev => ({ ...prev, body: e.target.value }))}
+                value={targetRequest.body}
+                onChange={(e) => setTargetRequest(prev => ({ ...prev, body: e.target.value }))}
                 placeholder='{"key": "value"}'
                 className="w-full h-20 p-2 border rounded text-xs font-mono mt-1"
               />
@@ -520,7 +520,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   className="text-xs"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      parseCURL('right', e.currentTarget.value);
+                      parseCURL('target', e.currentTarget.value);
                     }
                   }}
                 />
@@ -529,7 +529,7 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
                   variant="outline"
                   onClick={() => {
                     const input = document.querySelector('input[placeholder="curl -X GET https://..."]') as HTMLInputElement;
-                    if (input?.value) parseCURL('right', input.value);
+                    if (input?.value) parseCURL('target', input.value);
                   }}
                 >
                   <Copy className="w-3 h-3" />
@@ -539,11 +539,11 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
 
             {/* Execute Button */}
             <Button 
-              onClick={() => executeRequest('right')}
-              disabled={loading.right}
+              onClick={() => executeRequest('target')}
+              disabled={loading.target}
               className="w-full"
             >
-              {loading.right ? (
+              {loading.target ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Executing...
@@ -551,17 +551,17 @@ export default function AdhocCompare({ onAPIExecute, leftResponse, rightResponse
               ) : (
                 <>
                   <Play className="w-4 h-4 mr-2" />
-                  Execute Right Request
+                  Execute Target Request
                 </>
               )}
             </Button>
 
             {/* Error Display */}
-            {error.right && (
+            {error.target && (
               <div className="p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
                 <div className="flex items-center space-x-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{error.right}</span>
+                  <span>{error.target}</span>
                 </div>
               </div>
             )}

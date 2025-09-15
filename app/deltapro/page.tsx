@@ -37,26 +37,26 @@ interface APIResponse {
 
 // Main component state
 interface DeltaProState {
-  leftResponse: APIResponse | null;
-  rightResponse: APIResponse | null;
+  sourceResponse: APIResponse | null;
+  targetResponse: APIResponse | null;
   loading: {
-    left: boolean;
-    right: boolean;
+    source: boolean;
+    target: boolean;
   };
   error: {
-    left: string | null;
-    right: string | null;
+    source: string | null;
+    target: string | null;
   };
-  activeMode: 'api-journey' | 'adhoc-compare' | 'paste-response';
+  activeMode: 'api-explorer' | 'api-builder' | 'response-comparison';
 }
 
 export default function DeltaProPage() {
   const [state, setState] = useState<DeltaProState>({
-    leftResponse: null,
-    rightResponse: null,
-    loading: { left: false, right: false },
-    error: { left: null, right: null },
-    activeMode: 'api-journey'
+    sourceResponse: null,
+    targetResponse: null,
+    loading: { source: false, target: false },
+    error: { source: null, target: null },
+    activeMode: 'api-explorer'
   });
 
   // Load saved state from localStorage
@@ -78,7 +78,7 @@ export default function DeltaProPage() {
   }, [state]);
 
   // Handle API execution
-  const handleAPIExecute = async (side: 'left' | 'right', request: any) => {
+  const handleAPIExecute = async (side: 'source' | 'target', request: any) => {
     setState(prev => ({
       ...prev,
       loading: { ...prev.loading, [side]: true },
@@ -117,7 +117,7 @@ export default function DeltaProPage() {
   };
 
   // Handle response paste
-  const handleResponsePaste = (side: 'left' | 'right', response: APIResponse) => {
+  const handleResponsePaste = (side: 'source' | 'target', response: APIResponse) => {
     setState(prev => ({
       ...prev,
       [`${side}Response`]: response
@@ -128,9 +128,9 @@ export default function DeltaProPage() {
   const clearResponses = () => {
     setState(prev => ({
       ...prev,
-      leftResponse: null,
-      rightResponse: null,
-      error: { left: null, right: null }
+      sourceResponse: null,
+      targetResponse: null,
+      error: { source: null, target: null }
     }));
   };
 
@@ -188,21 +188,21 @@ export default function DeltaProPage() {
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="api-journey" className="flex items-center space-x-2">
+                <TabsTrigger value="api-explorer" className="flex items-center space-x-2">
                   <Zap className="w-4 h-4" />
-                  <span>API Journey</span>
+                  <span>API Explorer</span>
                 </TabsTrigger>
-                <TabsTrigger value="adhoc-compare" className="flex items-center space-x-2">
+                <TabsTrigger value="api-builder" className="flex items-center space-x-2">
                   <Globe className="w-4 h-4" />
-                  <span>Ad-hoc Compare</span>
+                  <span>API Builder</span>
                 </TabsTrigger>
-                <TabsTrigger value="paste-response" className="flex items-center space-x-2">
+                <TabsTrigger value="response-comparison" className="flex items-center space-x-2">
                   <FileText className="w-4 h-4" />
-                  <span>Paste Response</span>
+                  <span>Response Comparison</span>
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="api-journey" className="mt-6">
+              <TabsContent value="api-explorer" className="mt-6">
                 <React.Suspense fallback={
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin" />
@@ -210,15 +210,15 @@ export default function DeltaProPage() {
                 }>
                   <APIJourney
                     onAPIExecute={handleAPIExecute}
-                    leftResponse={state.leftResponse}
-                    rightResponse={state.rightResponse}
+                    sourceResponse={state.sourceResponse}
+                    targetResponse={state.targetResponse}
                     loading={state.loading}
                     error={state.error}
                   />
                 </React.Suspense>
               </TabsContent>
 
-              <TabsContent value="adhoc-compare" className="mt-6">
+              <TabsContent value="api-builder" className="mt-6">
                 <React.Suspense fallback={
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin" />
@@ -226,15 +226,15 @@ export default function DeltaProPage() {
                 }>
                   <AdhocCompare
                     onAPIExecute={handleAPIExecute}
-                    leftResponse={state.leftResponse}
-                    rightResponse={state.rightResponse}
+                    sourceResponse={state.sourceResponse}
+                    targetResponse={state.targetResponse}
                     loading={state.loading}
                     error={state.error}
                   />
                 </React.Suspense>
               </TabsContent>
 
-              <TabsContent value="paste-response" className="mt-6">
+              <TabsContent value="response-comparison" className="mt-6">
                 <React.Suspense fallback={
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin" />
@@ -242,8 +242,8 @@ export default function DeltaProPage() {
                 }>
                   <PasteResponse
                     onResponsePaste={handleResponsePaste}
-                    leftResponse={state.leftResponse}
-                    rightResponse={state.rightResponse}
+                    sourceResponse={state.sourceResponse}
+                    targetResponse={state.targetResponse}
                   />
                 </React.Suspense>
               </TabsContent>
@@ -252,7 +252,7 @@ export default function DeltaProPage() {
         </Card>
 
         {/* Response Comparison */}
-        {(state.leftResponse || state.rightResponse) && (
+        {(state.sourceResponse || state.targetResponse) && (
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -262,10 +262,10 @@ export default function DeltaProPage() {
                 </CardTitle>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline" className="text-xs">
-                    {state.leftResponse ? 'Left: Ready' : 'Left: Empty'}
+                    {state.sourceResponse ? 'Source: Ready' : 'Source: Empty'}
                   </Badge>
                   <Badge variant="outline" className="text-xs">
-                    {state.rightResponse ? 'Right: Ready' : 'Right: Empty'}
+                    {state.targetResponse ? 'Target: Ready' : 'Target: Empty'}
                   </Badge>
                   <button
                     onClick={clearResponses}
@@ -283,8 +283,8 @@ export default function DeltaProPage() {
                 </div>
               }>
                 <JsonDiff
-                  left={state.leftResponse}
-                  right={state.rightResponse}
+                  source={state.sourceResponse}
+                  target={state.targetResponse}
                 />
               </React.Suspense>
             </CardContent>
@@ -292,41 +292,41 @@ export default function DeltaProPage() {
         )}
 
         {/* Status Summary */}
-        {(state.leftResponse || state.rightResponse) && (
+        {(state.sourceResponse || state.targetResponse) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {state.leftResponse && (
+            {state.sourceResponse && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>Left Response</span>
+                    <span>Source Response</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <div>Status: {state.leftResponse.status} {state.leftResponse.statusText}</div>
-                    <div>Duration: {state.leftResponse.durationMs}ms</div>
-                    <div>Size: {state.leftResponse.size} bytes</div>
-                    <div>URL: {state.leftResponse.url}</div>
+                    <div>Status: {state.sourceResponse.status} {state.sourceResponse.statusText}</div>
+                    <div>Duration: {state.sourceResponse.durationMs}ms</div>
+                    <div>Size: {state.sourceResponse.size} bytes</div>
+                    <div>URL: {state.sourceResponse.url}</div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {state.rightResponse && (
+            {state.targetResponse && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>Right Response</span>
+                    <span>Target Response</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <div>Status: {state.rightResponse.status} {state.rightResponse.statusText}</div>
-                    <div>Duration: {state.rightResponse.durationMs}ms</div>
-                    <div>Size: {state.rightResponse.size} bytes</div>
-                    <div>URL: {state.rightResponse.url}</div>
+                    <div>Status: {state.targetResponse.status} {state.targetResponse.statusText}</div>
+                    <div>Duration: {state.targetResponse.durationMs}ms</div>
+                    <div>Size: {state.targetResponse.size} bytes</div>
+                    <div>URL: {state.targetResponse.url}</div>
                   </div>
                 </CardContent>
               </Card>

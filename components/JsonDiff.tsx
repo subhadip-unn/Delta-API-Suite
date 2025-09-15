@@ -30,11 +30,11 @@ interface APIResponse {
 }
 
 interface JsonDiffProps {
-  left: APIResponse | null;
-  right: APIResponse | null;
+  source: APIResponse | null;
+  target: APIResponse | null;
 }
 
-export default function JsonDiff({ left, right }: JsonDiffProps) {
+export default function JsonDiff({ source, target }: JsonDiffProps) {
   const [viewMode, setViewMode] = useState<'body' | 'headers'>('body');
   const [prettyPrint, setPrettyPrint] = useState(true);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
@@ -54,17 +54,17 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
 
   // Perform comparison
   const performComparison = async () => {
-    if (!left || !right) return;
+    if (!source || !target) return;
     
     setIsComparing(true);
     
     // Simulate processing time for better UX
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const leftData = viewMode === 'body' ? left.body : left.headers;
-    const rightData = viewMode === 'body' ? right.body : right.headers;
+    const sourceData = viewMode === 'body' ? source.body : source.headers;
+    const targetData = viewMode === 'body' ? target.body : target.headers;
     
-    const result = compareJsonData(leftData, rightData, orderSensitive);
+    const result = compareJsonData(sourceData, targetData, orderSensitive);
     setComparisonResult(result);
     setIsComparing(false);
   };
@@ -107,8 +107,8 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
     );
   };
 
-  const leftContent = formatResponse(left, viewMode);
-  const rightContent = formatResponse(right, viewMode);
+  const sourceContent = formatResponse(source, viewMode);
+  const targetContent = formatResponse(target, viewMode);
 
   // Copy to clipboard
   const copyToClipboard = async (text: string) => {
@@ -141,7 +141,7 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
     return 'text-gray-600';
   };
 
-  if (!left && !right) {
+  if (!source && !target) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -159,47 +159,47 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
     <div className="space-y-4">
       {/* Response Headers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {left && (
+        {source && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Left Response</span>
+                  <span>Source Response</span>
                 </div>
-                <Badge variant="outline" className={getStatusColor(left.status)}>
-                  {left.status} {left.statusText}
+                <Badge variant="outline" className={getStatusColor(source.status)}>
+                  {source.status} {source.statusText}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="space-y-1 text-xs text-muted-foreground">
-                <div>Duration: {left.durationMs}ms</div>
-                <div>Size: {left.size} bytes</div>
-                <div className="truncate">URL: {left.url}</div>
+                <div>Duration: {source.durationMs}ms</div>
+                <div>Size: {source.size} bytes</div>
+                <div className="truncate">URL: {source.url}</div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {right && (
+        {target && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>Right Response</span>
+                  <span>Target Response</span>
                 </div>
-                <Badge variant="outline" className={getStatusColor(right.status)}>
-                  {right.status} {right.statusText}
+                <Badge variant="outline" className={getStatusColor(target.status)}>
+                  {target.status} {target.statusText}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="space-y-1 text-xs text-muted-foreground">
-                <div>Duration: {right.durationMs}ms</div>
-                <div>Size: {right.size} bytes</div>
-                <div className="truncate">URL: {right.url}</div>
+                <div>Duration: {target.durationMs}ms</div>
+                <div>Size: {target.size} bytes</div>
+                <div className="truncate">URL: {target.url}</div>
               </div>
             </CardContent>
           </Card>
@@ -226,7 +226,7 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(leftContent + '\n\n---\n\n' + rightContent)}
+                onClick={() => copyToClipboard(sourceContent + '\n\n---\n\n' + targetContent)}
               >
                 <Copy className="w-4 h-4 mr-2" />
                 Copy Both
@@ -256,8 +256,8 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
                 <DiffEditor
                   height="60vh"
                   language="json"
-                  original={leftContent}
-                  modified={rightContent}
+                  original={sourceContent}
+                  modified={targetContent}
                   options={{
                     readOnly: true,
                     renderSideBySide: true,
@@ -297,8 +297,8 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
                 <DiffEditor
                   height="60vh"
                   language="json"
-                  original={leftContent}
-                  modified={rightContent}
+                  original={sourceContent}
+                  modified={targetContent}
                   options={{
                     readOnly: true,
                     renderSideBySide: true,
@@ -339,7 +339,7 @@ export default function JsonDiff({ left, right }: JsonDiffProps) {
                   <div className="flex items-center space-x-2">
                     <Button
                       onClick={performComparison}
-                      disabled={!left || !right || isComparing}
+                      disabled={!source || !target || isComparing}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       {isComparing ? (

@@ -15,16 +15,16 @@ import {
 } from 'lucide-react';
 
 interface PasteResponseProps {
-  onResponsePaste: (side: 'left' | 'right', response: any) => void;
-  leftResponse: any;
-  rightResponse: any;
+  onResponsePaste: (side: 'source' | 'target', response: any) => void;
+  sourceResponse: any;
+  targetResponse: any;
 }
 
-export default function PasteResponse({ onResponsePaste, leftResponse, rightResponse }: PasteResponseProps) {
-  const [leftText, setLeftText] = useState('');
-  const [rightText, setRightText] = useState('');
-  const [leftError, setLeftError] = useState<string | null>(null);
-  const [rightError, setRightError] = useState<string | null>(null);
+export default function PasteResponse({ onResponsePaste, sourceResponse, targetResponse }: PasteResponseProps) {
+  const [sourceText, setSourceText] = useState('');
+  const [targetText, setTargetText] = useState('');
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const [targetError, setTargetError] = useState<string | null>(null);
 
   // Parse JSON text
   const parseJSON = (text: string) => {
@@ -45,26 +45,26 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
   };
 
   // Handle text change
-  const handleTextChange = (side: 'left' | 'right', text: string) => {
-    if (side === 'left') {
-      setLeftText(text);
-      setLeftError(null);
+  const handleTextChange = (side: 'source' | 'target', text: string) => {
+    if (side === 'source') {
+      setSourceText(text);
+      setSourceError(null);
     } else {
-      setRightText(text);
-      setRightError(null);
+      setTargetText(text);
+      setTargetError(null);
     }
   };
 
   // Handle paste response
-  const handlePasteResponse = (side: 'left' | 'right') => {
-    const text = side === 'left' ? leftText : rightText;
+  const handlePasteResponse = (side: 'source' | 'target') => {
+    const text = side === 'source' ? sourceText : targetText;
     const parsed = parseJSON(text);
     
     if (parsed === null) {
-      if (side === 'left') {
-        setLeftError('Invalid JSON format');
+      if (side === 'source') {
+        setSourceError('Invalid JSON format');
       } else {
-        setRightError('Invalid JSON format');
+        setTargetError('Invalid JSON format');
       }
       return;
     }
@@ -87,13 +87,13 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
   };
 
   // Clear response
-  const clearResponse = (side: 'left' | 'right') => {
-    if (side === 'left') {
-      setLeftText('');
-      setLeftError(null);
+  const clearResponse = (side: 'source' | 'target') => {
+    if (side === 'source') {
+      setSourceText('');
+      setSourceError(null);
     } else {
-      setRightText('');
-      setRightError(null);
+      setTargetText('');
+      setTargetError(null);
     }
   };
 
@@ -131,7 +131,7 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
                 <span>Left Response</span>
               </div>
               <div className="flex items-center space-x-2">
-                {leftResponse && (
+                {sourceResponse && (
                   <Badge variant="outline" className="text-xs">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Ready
@@ -140,7 +140,7 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => clearResponse('left')}
+                  onClick={() => clearResponse('source')}
                 >
                   <RefreshCw className="w-3 h-3" />
                 </Button>
@@ -151,26 +151,26 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
             <div>
               <Label className="text-sm font-medium">Paste JSON Response</Label>
               <textarea
-                value={leftText}
-                onChange={(e) => handleTextChange('left', e.target.value)}
+                value={sourceText}
+                onChange={(e) => handleTextChange('source', e.target.value)}
                 placeholder='Paste your JSON response here...'
                 className="w-full h-64 p-3 border rounded font-mono text-sm mt-1"
               />
             </div>
 
-            {leftError && (
+            {sourceError && (
               <div className="p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
                 <div className="flex items-center space-x-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{leftError}</span>
+                  <span>{sourceError}</span>
                 </div>
               </div>
             )}
 
             <div className="flex space-x-2">
               <Button
-                onClick={() => handlePasteResponse('left')}
-                disabled={!leftText.trim()}
+                onClick={() => handlePasteResponse('source')}
+                disabled={!sourceText.trim()}
                 className="flex-1"
               >
                 <FileText className="w-4 h-4 mr-2" />
@@ -179,42 +179,42 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(leftText)}
-                disabled={!leftText.trim()}
+                onClick={() => copyToClipboard(sourceText)}
+                disabled={!sourceText.trim()}
               >
                 <Copy className="w-3 h-3" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadAsFile(leftText, 'left-response.json')}
-                disabled={!leftText.trim()}
+                onClick={() => downloadAsFile(sourceText, 'left-response.json')}
+                disabled={!sourceText.trim()}
               >
                 <Download className="w-3 h-3" />
               </Button>
             </div>
 
-            {leftResponse && (
+            {sourceResponse && (
               <div className="p-3 bg-muted rounded text-xs">
                 <div className="font-medium mb-2">Response Preview:</div>
                 <div className="font-mono text-xs overflow-auto max-h-32">
-                  {formatJSON(leftResponse.body)}
+                  {formatJSON(sourceResponse.body)}
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Right Response */}
+        {/* Target Response */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Right Response</span>
+                <span>Target Response</span>
               </div>
               <div className="flex items-center space-x-2">
-                {rightResponse && (
+                {targetResponse && (
                   <Badge variant="outline" className="text-xs">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Ready
@@ -223,7 +223,7 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => clearResponse('right')}
+                  onClick={() => clearResponse('target')}
                 >
                   <RefreshCw className="w-3 h-3" />
                 </Button>
@@ -234,54 +234,54 @@ export default function PasteResponse({ onResponsePaste, leftResponse, rightResp
             <div>
               <Label className="text-sm font-medium">Paste JSON Response</Label>
               <textarea
-                value={rightText}
-                onChange={(e) => handleTextChange('right', e.target.value)}
+                value={targetText}
+                onChange={(e) => handleTextChange('target', e.target.value)}
                 placeholder='Paste your JSON response here...'
                 className="w-full h-64 p-3 border rounded font-mono text-sm mt-1"
               />
             </div>
 
-            {rightError && (
+            {targetError && (
               <div className="p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
                 <div className="flex items-center space-x-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{rightError}</span>
+                  <span>{targetError}</span>
                 </div>
               </div>
             )}
 
             <div className="flex space-x-2">
               <Button
-                onClick={() => handlePasteResponse('right')}
-                disabled={!rightText.trim()}
+                onClick={() => handlePasteResponse('target')}
+                disabled={!targetText.trim()}
                 className="flex-1"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                Use as Right Response
+                Use as Target Response
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(rightText)}
-                disabled={!rightText.trim()}
+                onClick={() => copyToClipboard(targetText)}
+                disabled={!targetText.trim()}
               >
                 <Copy className="w-3 h-3" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadAsFile(rightText, 'right-response.json')}
-                disabled={!rightText.trim()}
+                onClick={() => downloadAsFile(targetText, 'right-response.json')}
+                disabled={!targetText.trim()}
               >
                 <Download className="w-3 h-3" />
               </Button>
             </div>
 
-            {rightResponse && (
+            {targetResponse && (
               <div className="p-3 bg-muted rounded text-xs">
                 <div className="font-medium mb-2">Response Preview:</div>
                 <div className="font-mono text-xs overflow-auto max-h-32">
-                  {formatJSON(rightResponse.body)}
+                  {formatJSON(targetResponse.body)}
                 </div>
               </div>
             )}

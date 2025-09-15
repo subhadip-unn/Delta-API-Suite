@@ -31,31 +31,31 @@ import {
 import { compareJsonData, ComparisonResult } from '@/lib/comparison-engine';
 
 interface APIJourneyProps {
-  onAPIExecute: (side: 'left' | 'right', request: any) => void;
-  leftResponse: any;
-  rightResponse: any;
-  loading: { left: boolean; right: boolean };
-  error: { left: string | null; right: string | null };
+  onAPIExecute: (side: 'source' | 'target', request: any) => void;
+  sourceResponse: any;
+  targetResponse: any;
+  loading: { source: boolean; target: boolean };
+  error: { source: string | null; target: string | null };
 }
 
-export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, loading, error }: APIJourneyProps) {
+export default function APIJourney({ onAPIExecute, sourceResponse, targetResponse, loading, error }: APIJourneyProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('home');
-  const [leftAPI, setLeftAPI] = useState<APIEndpoint | null>(null);
-  const [rightAPI, setRightAPI] = useState<APIEndpoint | null>(null);
-  const [leftParams, setLeftParams] = useState<Record<string, string>>({});
-  const [rightParams, setRightParams] = useState<Record<string, string>>({});
-  const [leftConfig, setLeftConfig] = useState({
+  const [sourceAPI, setSourceAPI] = useState<APIEndpoint | null>(null);
+  const [targetAPI, setTargetAPI] = useState<APIEndpoint | null>(null);
+  const [sourceParams, setSourceParams] = useState<Record<string, string>>({});
+  const [targetParams, setTargetParams] = useState<Record<string, string>>({});
+  const [sourceConfig, setSourceConfig] = useState({
     platform: 'm',
     environment: 'prod',
     version: 'v1'
   });
-  const [rightConfig, setRightConfig] = useState({
+  const [targetConfig, setTargetConfig] = useState({
     platform: 'm',
     environment: 'staging',
     version: 'v1'
   });
-  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  const [diffAnalysis, setDiffAnalysis] = useState<ComparisonResult | null>(null);
   const [isComparing, setIsComparing] = useState(false);
 
   // Get filtered APIs
@@ -72,30 +72,30 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
   const categories = [...new Set(apiCatalog.map(api => api.category))];
 
   // Handle API selection
-  const handleAPISelection = (side: 'left' | 'right', api: APIEndpoint) => {
-    if (side === 'left') {
-      setLeftAPI(api);
-      setLeftParams({});
+  const handleAPISelection = (side: 'source' | 'target', api: APIEndpoint) => {
+    if (side === 'source') {
+      setSourceAPI(api);
+      setSourceParams({});
     } else {
-      setRightAPI(api);
-      setRightParams({});
+      setTargetAPI(api);
+      setTargetParams({});
     }
   };
 
   // Handle parameter change
-  const handleParameterChange = (side: 'left' | 'right', key: string, value: string) => {
-    if (side === 'left') {
-      setLeftParams(prev => ({ ...prev, [key]: value }));
+  const handleParameterChange = (side: 'source' | 'target', key: string, value: string) => {
+    if (side === 'source') {
+      setSourceParams(prev => ({ ...prev, [key]: value }));
     } else {
-      setRightParams(prev => ({ ...prev, [key]: value }));
+      setTargetParams(prev => ({ ...prev, [key]: value }));
     }
   };
 
   // Execute API
-  const executeAPI = async (side: 'left' | 'right') => {
-    const api = side === 'left' ? leftAPI : rightAPI;
-    const params = side === 'left' ? leftParams : rightParams;
-    const config = side === 'left' ? leftConfig : rightConfig;
+  const executeAPI = async (side: 'source' | 'target') => {
+    const api = side === 'source' ? sourceAPI : targetAPI;
+    const params = side === 'source' ? sourceParams : targetParams;
+    const config = side === 'source' ? sourceConfig : targetConfig;
 
     if (!api) return;
 
@@ -152,15 +152,15 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
 
   // Compare responses
   const compareResponses = async () => {
-    if (!leftResponse || !rightResponse) return;
+    if (!sourceResponse || !targetResponse) return;
     
     setIsComparing(true);
     
     // Simulate processing time for better UX
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const result = compareJsonData(leftResponse, rightResponse, false);
-    setComparisonResult(result);
+    const result = compareJsonData(sourceResponse, targetResponse, false);
+    setDiffAnalysis(result);
     setIsComparing(false);
   };
 
@@ -225,12 +225,12 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
 
       {/* API Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left API */}
+        {/* Source API */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Left API</span>
+              <span>Source API</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -239,7 +239,7 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
               <Label>Select API</Label>
               <Select onValueChange={(value) => {
                 const api = filteredAPIs.find(a => a.id === value);
-                if (api) handleAPISelection('left', api);
+                if (api) handleAPISelection('source', api);
               }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Choose an API..." />
@@ -258,13 +258,13 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
             </div>
 
             {/* Configuration */}
-            {leftAPI && (
+            {sourceAPI && (
               <>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">Platform</Label>
-                    <Select value={leftConfig.platform} onValueChange={(value) => 
-                      setLeftConfig(prev => ({ ...prev, platform: value }))
+                    <Select value={sourceConfig.platform} onValueChange={(value) => 
+                      setSourceConfig(prev => ({ ...prev, platform: value }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -280,8 +280,8 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                   </div>
                   <div>
                     <Label className="text-xs">Environment</Label>
-                    <Select value={leftConfig.environment} onValueChange={(value) => 
-                      setLeftConfig(prev => ({ ...prev, environment: value }))
+                    <Select value={sourceConfig.environment} onValueChange={(value) => 
+                      setSourceConfig(prev => ({ ...prev, environment: value }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -297,8 +297,8 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                   </div>
                   <div>
                     <Label className="text-xs">Version</Label>
-                    <Select value={leftConfig.version} onValueChange={(value) => 
-                      setLeftConfig(prev => ({ ...prev, version: value }))
+                    <Select value={sourceConfig.version} onValueChange={(value) => 
+                      setSourceConfig(prev => ({ ...prev, version: value }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -312,10 +312,10 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                 </div>
 
                 {/* Parameters */}
-                {leftAPI.parameters.length > 0 && (
+                {sourceAPI.parameters.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Parameters</Label>
-                    {leftAPI.parameters.map(param => (
+                    {sourceAPI.parameters.map(param => (
                       <div key={param.key} className="space-y-1">
                         <Label htmlFor={`left-${param.key}`} className="text-xs flex items-center space-x-1">
                           <span>{param.description}</span>
@@ -324,8 +324,8 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                         <Input
                           id={`left-${param.key}`}
                           type={param.type === 'number' ? 'number' : 'text'}
-                          value={leftParams[param.key] || ''}
-                          onChange={(e) => handleParameterChange('left', param.key, e.target.value)}
+                          value={sourceParams[param.key] || ''}
+                          onChange={(e) => handleParameterChange('source', param.key, e.target.value)}
                           placeholder={param.placeholder}
                           className="text-sm"
                         />
@@ -335,15 +335,15 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                 )}
 
                 {/* Request Body for POST/PUT requests */}
-                {(leftAPI.method === 'POST' || leftAPI.method === 'PUT') && (
+                {(sourceAPI.method === 'POST' || sourceAPI.method === 'PUT') && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Request Body</Label>
                     <textarea
                       className="w-full p-2 border rounded text-sm font-mono"
                       rows={4}
                       placeholder="Enter JSON request body..."
-                      value={leftParams['_body'] || ''}
-                      onChange={(e) => handleParameterChange('left', '_body', e.target.value)}
+                      value={sourceParams['_body'] || ''}
+                      onChange={(e) => handleParameterChange('source', '_body', e.target.value)}
                     />
                   </div>
                 )}
@@ -352,23 +352,23 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
                     <Label className="text-xs">Method:</Label>
-                    <Badge variant={leftAPI.method === 'GET' ? 'default' : leftAPI.method === 'POST' ? 'destructive' : 'secondary'}>
-                      {leftAPI.method}
+                    <Badge variant={sourceAPI.method === 'GET' ? 'default' : sourceAPI.method === 'POST' ? 'destructive' : 'secondary'}>
+                      {sourceAPI.method}
                     </Badge>
                   </div>
                   <Label className="text-xs">Preview URL</Label>
                   <div className="p-2 bg-muted rounded text-xs font-mono break-all">
-                    {generatePreviewURL(leftAPI, leftParams, leftConfig)}
+                    {generatePreviewURL(sourceAPI, sourceParams, sourceConfig)}
                   </div>
                 </div>
 
                 {/* Execute Button */}
                 <Button 
-                  onClick={() => executeAPI('left')}
-                  disabled={loading.left || !leftAPI}
+                  onClick={() => executeAPI('source')}
+                  disabled={loading.source || !sourceAPI}
                   className="w-full"
                 >
-                  {loading.left ? (
+                  {loading.source ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Executing...
@@ -382,11 +382,11 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                 </Button>
 
                 {/* Error Display */}
-                {error.left && (
+                {error.source && (
                   <div className="p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
                     <div className="flex items-center space-x-1">
                       <AlertCircle className="w-3 h-3" />
-                      <span>{error.left}</span>
+                      <span>{error.source}</span>
                     </div>
                   </div>
                 )}
@@ -395,12 +395,12 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
           </CardContent>
         </Card>
 
-        {/* Right API */}
+        {/* Target API */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span>Right API</span>
+              <span>Target API</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -409,7 +409,7 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
               <Label>Select API</Label>
               <Select onValueChange={(value) => {
                 const api = filteredAPIs.find(a => a.id === value);
-                if (api) handleAPISelection('right', api);
+                if (api) handleAPISelection('target', api);
               }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Choose an API..." />
@@ -428,13 +428,13 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
             </div>
 
             {/* Configuration */}
-            {rightAPI && (
+            {targetAPI && (
               <>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">Platform</Label>
-                    <Select value={rightConfig.platform} onValueChange={(value) => 
-                      setRightConfig(prev => ({ ...prev, platform: value }))
+                    <Select value={targetConfig.platform} onValueChange={(value) => 
+                      setTargetConfig(prev => ({ ...prev, platform: value }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -450,8 +450,8 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                   </div>
                   <div>
                     <Label className="text-xs">Environment</Label>
-                    <Select value={rightConfig.environment} onValueChange={(value) => 
-                      setRightConfig(prev => ({ ...prev, environment: value }))
+                    <Select value={targetConfig.environment} onValueChange={(value) => 
+                      setTargetConfig(prev => ({ ...prev, environment: value }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -467,8 +467,8 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                   </div>
                   <div>
                     <Label className="text-xs">Version</Label>
-                    <Select value={rightConfig.version} onValueChange={(value) => 
-                      setRightConfig(prev => ({ ...prev, version: value }))
+                    <Select value={targetConfig.version} onValueChange={(value) => 
+                      setTargetConfig(prev => ({ ...prev, version: value }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -482,10 +482,10 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                 </div>
 
                 {/* Parameters */}
-                {rightAPI.parameters.length > 0 && (
+                {targetAPI.parameters.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Parameters</Label>
-                    {rightAPI.parameters.map(param => (
+                    {targetAPI.parameters.map(param => (
                       <div key={param.key} className="space-y-1">
                         <Label htmlFor={`right-${param.key}`} className="text-xs flex items-center space-x-1">
                           <span>{param.description}</span>
@@ -494,8 +494,8 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                         <Input
                           id={`right-${param.key}`}
                           type={param.type === 'number' ? 'number' : 'text'}
-                          value={rightParams[param.key] || ''}
-                          onChange={(e) => handleParameterChange('right', param.key, e.target.value)}
+                          value={targetParams[param.key] || ''}
+                          onChange={(e) => handleParameterChange('target', param.key, e.target.value)}
                           placeholder={param.placeholder}
                           className="text-sm"
                         />
@@ -505,15 +505,15 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                 )}
 
                 {/* Request Body for POST/PUT requests */}
-                {(rightAPI.method === 'POST' || rightAPI.method === 'PUT') && (
+                {(targetAPI.method === 'POST' || targetAPI.method === 'PUT') && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Request Body</Label>
                     <textarea
                       className="w-full p-2 border rounded text-sm font-mono"
                       rows={4}
                       placeholder="Enter JSON request body..."
-                      value={rightParams['_body'] || ''}
-                      onChange={(e) => handleParameterChange('right', '_body', e.target.value)}
+                      value={targetParams['_body'] || ''}
+                      onChange={(e) => handleParameterChange('target', '_body', e.target.value)}
                     />
                   </div>
                 )}
@@ -522,23 +522,23 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
                     <Label className="text-xs">Method:</Label>
-                    <Badge variant={rightAPI.method === 'GET' ? 'default' : rightAPI.method === 'POST' ? 'destructive' : 'secondary'}>
-                      {rightAPI.method}
+                    <Badge variant={targetAPI.method === 'GET' ? 'default' : targetAPI.method === 'POST' ? 'destructive' : 'secondary'}>
+                      {targetAPI.method}
                     </Badge>
                   </div>
                   <Label className="text-xs">Preview URL</Label>
                   <div className="p-2 bg-muted rounded text-xs font-mono break-all">
-                    {generatePreviewURL(rightAPI, rightParams, rightConfig)}
+                    {generatePreviewURL(targetAPI, targetParams, targetConfig)}
                   </div>
                 </div>
 
                 {/* Execute Button */}
                 <Button 
-                  onClick={() => executeAPI('right')}
-                  disabled={loading.right || !rightAPI}
+                  onClick={() => executeAPI('target')}
+                  disabled={loading.target || !targetAPI}
                   className="w-full"
                 >
-                  {loading.right ? (
+                  {loading.target ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Executing...
@@ -546,17 +546,17 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                   ) : (
                     <>
                       <Play className="w-4 h-4 mr-2" />
-                      Execute Right API
+                      Execute Target API
                     </>
                   )}
                 </Button>
 
                 {/* Error Display */}
-                {error.right && (
+                {error.target && (
                   <div className="p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
                     <div className="flex items-center space-x-1">
                       <AlertCircle className="w-3 h-3" />
-                      <span>{error.right}</span>
+                      <span>{error.target}</span>
                     </div>
                   </div>
                 )}
@@ -567,7 +567,7 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
       </div>
 
       {/* Comparison Section */}
-      {leftResponse && rightResponse && (
+      {sourceResponse && targetResponse && (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -598,13 +598,13 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                   </Button>
                 </div>
                 <div className="text-sm text-gray-500">
-                  Left: {leftResponse?.size || 0} bytes | Right: {rightResponse?.size || 0} bytes
+                  Left: {sourceResponse?.size || 0} bytes | Right: {targetResponse?.size || 0} bytes
                 </div>
               </div>
               
-              {comparisonResult && (
+              {diffAnalysis && (
                 <div className="space-y-4">
-                  {comparisonResult.identical ? (
+                  {diffAnalysis.identical ? (
                     <div className="text-center py-8">
                       <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-green-700 mb-2">
@@ -618,25 +618,25 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="bg-red-50 p-4 rounded-lg text-center">
-                          <div className="text-2xl font-bold text-red-600">{comparisonResult.summary.missingFields}</div>
+                          <div className="text-2xl font-bold text-red-600">{diffAnalysis.summary.missingFields}</div>
                           <div className="text-sm text-red-700">Missing</div>
                         </div>
                         <div className="bg-green-50 p-4 rounded-lg text-center">
-                          <div className="text-2xl font-bold text-green-600">{comparisonResult.summary.extraFields}</div>
+                          <div className="text-2xl font-bold text-green-600">{diffAnalysis.summary.extraFields}</div>
                           <div className="text-sm text-green-700">Extra</div>
                         </div>
                         <div className="bg-yellow-50 p-4 rounded-lg text-center">
-                          <div className="text-2xl font-bold text-yellow-600">{comparisonResult.summary.differentFields}</div>
+                          <div className="text-2xl font-bold text-yellow-600">{diffAnalysis.summary.differentFields}</div>
                           <div className="text-sm text-yellow-700">Changed</div>
                         </div>
                         <div className="bg-blue-50 p-4 rounded-lg text-center">
-                          <div className="text-2xl font-bold text-blue-600">{comparisonResult.summary.identicalFields}</div>
+                          <div className="text-2xl font-bold text-blue-600">{diffAnalysis.summary.identicalFields}</div>
                           <div className="text-sm text-blue-700">Identical</div>
                         </div>
                       </div>
                       
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {comparisonResult.differences.slice(0, 10).map((diff, index) => (
+                        {diffAnalysis.differences.slice(0, 10).map((diff, index) => (
                           <div key={index} className="border rounded-lg p-3 space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
@@ -654,9 +654,9 @@ export default function APIJourney({ onAPIExecute, leftResponse, rightResponse, 
                             <p className="text-sm text-gray-700">{diff.description}</p>
                           </div>
                         ))}
-                        {comparisonResult.differences.length > 10 && (
+                        {diffAnalysis.differences.length > 10 && (
                           <div className="text-center text-sm text-gray-500">
-                            ... and {comparisonResult.differences.length - 10} more differences
+                            ... and {diffAnalysis.differences.length - 10} more differences
                           </div>
                         )}
                       </div>
