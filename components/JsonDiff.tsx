@@ -48,6 +48,10 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
     if (mode === 'headers') {
       return JSON.stringify(response.headers, null, prettyPrint ? 2 : 0);
     } else {
+      // Support raw text bodies for text-diff fallback
+      if (typeof response.body === 'string') {
+        return response.body;
+      }
       return JSON.stringify(response.body, null, prettyPrint ? 2 : 0);
     }
   };
@@ -64,7 +68,20 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
     const sourceData = viewMode === 'body' ? source.body : source.headers;
     const targetData = viewMode === 'body' ? target.body : target.headers;
     
-    const result = compareJsonData(sourceData, targetData, orderSensitive);
+    // If either side is a string (invalid JSON fallback), skip structural compare
+    const result = (typeof sourceData === 'string' || typeof targetData === 'string')
+      ? {
+          identical: sourceContent === targetContent,
+          differences: [],
+          summary: {
+            totalFields: 0,
+            identicalFields: 0,
+            differentFields: 0,
+            missingFields: 0,
+            extraFields: 0
+          }
+        }
+      : compareJsonData(sourceData, targetData, orderSensitive);
     setComparisonResult(result);
     setIsComparing(false);
   };
@@ -109,6 +126,8 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
 
   const sourceContent = formatResponse(source, viewMode);
   const targetContent = formatResponse(target, viewMode);
+  const isBodyText = typeof (source?.body) === 'string' || typeof (target?.body) === 'string';
+  const isHeadersText = typeof (source?.headers as any) === 'string' || typeof (target?.headers as any) === 'string';
 
   // Copy to clipboard
   const copyToClipboard = async (text: string) => {
@@ -255,7 +274,7 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
               <div className="border rounded-lg overflow-hidden">
                 <DiffEditor
                   height="60vh"
-                  language="json"
+                  language={isBodyText ? 'plaintext' : 'json'}
                   original={sourceContent}
                   modified={targetContent}
                   options={{
@@ -296,7 +315,7 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
               <div className="border rounded-lg overflow-hidden">
                 <DiffEditor
                   height="60vh"
-                  language="json"
+                  language={isHeadersText ? 'plaintext' : 'json'}
                   original={sourceContent}
                   modified={targetContent}
                   options={{

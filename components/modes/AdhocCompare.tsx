@@ -339,7 +339,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
               ) : (
                 <>
                   <Play className="w-4 h-4 mr-2" />
-                  Execute Left Request
+                  Execute Source Request
                 </>
               )}
             </Button>

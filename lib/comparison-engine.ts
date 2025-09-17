@@ -205,19 +205,19 @@ export const compareJsonData = (obj1: any, obj2: any, isOrderSensitive: boolean 
             type: 'missing',
             oldValue: unmatched.item,
             newValue: undefined,
-            description: `Item from Live API not found in New API (no similar match found)`
+            description: `Item from Source not found in Target (no similar match found)`
           });
         }
         
         // Phase 3: Identify truly extra items (in B but not matched with A)
         for (let j = 0; j < b.length; j++) {
           if (!usedIndicesInB.has(j)) {
-            differences.push({
+          differences.push({
               path: `${path}[${j}]`,
               type: 'extra',
               oldValue: undefined,
               newValue: b[j],
-              description: `New item in New API not found in Live API`
+            description: `Item in Target not found in Source`
             });
           }
         }
@@ -237,7 +237,7 @@ export const compareJsonData = (obj1: any, obj2: any, isOrderSensitive: boolean 
             type: 'extra',
             oldValue: undefined,
             newValue: b[key],
-            description: `Property '${key}' exists only in right object`
+            description: `Property '${key}' exists only in Target`
           });
         } else if (!(key in b)) {
           differences.push({
@@ -245,7 +245,7 @@ export const compareJsonData = (obj1: any, obj2: any, isOrderSensitive: boolean 
             type: 'missing',
             oldValue: a[key],
             newValue: undefined,
-            description: `Property '${key}' exists only in left object`
+            description: `Property '${key}' exists only in Source`
           });
         } else {
           compare(a[key], b[key], newPath);

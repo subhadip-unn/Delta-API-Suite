@@ -60,13 +60,14 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
     const text = side === 'source' ? sourceText : targetText;
     const parsed = parseJSON(text);
     
-    if (parsed === null) {
+    // If JSON is invalid, surface error but still allow text-based comparison by passing raw text
+    const isJsonValid = parsed !== null;
+    if (!isJsonValid) {
       if (side === 'source') {
         setSourceError('Invalid JSON format');
       } else {
         setTargetError('Invalid JSON format');
       }
-      return;
     }
 
     // Create mock response object
@@ -74,12 +75,12 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
       status: 200,
       statusText: 'OK',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': isJsonValid ? 'application/json' : 'text/plain',
         'Content-Length': text.length.toString()
       },
       durationMs: 0,
       size: text.length,
-      body: parsed,
+      body: isJsonValid ? parsed : text,
       url: 'pasted-response'
     };
 
@@ -122,13 +123,13 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Response */}
+        {/* Source Response */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Left Response</span>
+                <span>Source Response</span>
               </div>
               <div className="flex items-center space-x-2">
                 {sourceResponse && (
@@ -174,7 +175,7 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
                 className="flex-1"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                Use as Left Response
+                Use as Source Response
               </Button>
               <Button
                 variant="outline"
@@ -187,7 +188,7 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadAsFile(sourceText, 'left-response.json')}
+                onClick={() => downloadAsFile(sourceText, 'source-response.json')}
                 disabled={!sourceText.trim()}
               >
                 <Download className="w-3 h-3" />
@@ -270,7 +271,7 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadAsFile(targetText, 'right-response.json')}
+                onClick={() => downloadAsFile(targetText, 'target-response.json')}
                 disabled={!targetText.trim()}
               >
                 <Download className="w-3 h-3" />

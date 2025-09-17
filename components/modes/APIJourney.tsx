@@ -317,12 +317,12 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                     <Label className="text-sm font-medium">Parameters</Label>
                     {sourceAPI.parameters.map(param => (
                       <div key={param.key} className="space-y-1">
-                        <Label htmlFor={`left-${param.key}`} className="text-xs flex items-center space-x-1">
+                        <Label htmlFor={`source-${param.key}`} className="text-xs flex items-center space-x-1">
                           <span>{param.description}</span>
                           {param.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
                         </Label>
                         <Input
-                          id={`left-${param.key}`}
+                          id={`source-${param.key}`}
                           type={param.type === 'number' ? 'number' : 'text'}
                           value={sourceParams[param.key] || ''}
                           onChange={(e) => handleParameterChange('source', param.key, e.target.value)}
@@ -376,7 +376,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   ) : (
                     <>
                       <Play className="w-4 h-4 mr-2" />
-                      Execute Left API
+                      Execute Source API
                     </>
                   )}
                 </Button>
@@ -487,12 +487,12 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                     <Label className="text-sm font-medium">Parameters</Label>
                     {targetAPI.parameters.map(param => (
                       <div key={param.key} className="space-y-1">
-                        <Label htmlFor={`right-${param.key}`} className="text-xs flex items-center space-x-1">
+                        <Label htmlFor={`target-${param.key}`} className="text-xs flex items-center space-x-1">
                           <span>{param.description}</span>
                           {param.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
                         </Label>
                         <Input
-                          id={`right-${param.key}`}
+                          id={`target-${param.key}`}
                           type={param.type === 'number' ? 'number' : 'text'}
                           value={targetParams[param.key] || ''}
                           onChange={(e) => handleParameterChange('target', param.key, e.target.value)}
@@ -598,7 +598,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   </Button>
                 </div>
                 <div className="text-sm text-gray-500">
-                  Left: {sourceResponse?.size || 0} bytes | Right: {targetResponse?.size || 0} bytes
+                  Source: {sourceResponse?.size || 0} bytes | Target: {targetResponse?.size || 0} bytes
                 </div>
               </div>
               
