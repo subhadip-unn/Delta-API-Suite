@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 // Simple icon components to avoid hydration issues
 const Play = ({ className }: { className?: string }) => <span className={className}>▶️</span>;
 const Loader2 = ({ className }: { className?: string }) => <span className={`${className} animate-spin`}>⟳</span>;
@@ -43,6 +44,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   const [selectedCategory, setSelectedCategory] = useState('home');
   const [sourceAPI, setSourceAPI] = useState<APIEndpoint | null>(null);
   const [targetAPI, setTargetAPI] = useState<APIEndpoint | null>(null);
+  const [autofillTarget, setAutofillTarget] = useState(true);
   const [sourceParams, setSourceParams] = useState<Record<string, string>>({});
   const [targetParams, setTargetParams] = useState<Record<string, string>>({});
   const [sourceConfig, setSourceConfig] = useState({
@@ -76,6 +78,17 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     if (side === 'source') {
       setSourceAPI(api);
       setSourceParams({});
+      // Auto-fill target with the same API for quicker comparison
+      if (autofillTarget) {
+        setTargetAPI(api);
+        setTargetParams({});
+        // Keep platform same, suggest a different env/version for comparison
+        setTargetConfig(prev => ({
+          platform: sourceConfig.platform,
+          environment: sourceConfig.environment === 'prod' ? 'staging' : sourceConfig.environment,
+          version: sourceConfig.version === 'v1' ? 'v2' : sourceConfig.version
+        }));
+      }
     } else {
       setTargetAPI(api);
       setTargetParams({});
@@ -220,6 +233,13 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
               </Select>
             </div>
           </div>
+          {/* Autofill toggle */}
+          <div className="mt-4 flex items-center space-x-2">
+            <Switch id="autofill-target" checked={autofillTarget} onCheckedChange={setAutofillTarget} />
+            <Label htmlFor="autofill-target" className="text-sm">
+              Auto-fill Target with selected Source API
+            </Label>
+          </div>
         </CardContent>
       </Card>
 
@@ -237,19 +257,19 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
             {/* API Selection */}
             <div>
               <Label>Select API</Label>
-              <Select onValueChange={(value) => {
+              <Select value={sourceAPI?.id} onValueChange={(value) => {
                 const api = filteredAPIs.find(a => a.id === value);
                 if (api) handleAPISelection('source', api);
               }}>
-                <SelectTrigger className="mt-1">
+              <SelectTrigger className="mt-1 h-11 text-sm">
                   <SelectValue placeholder="Choose an API..." />
                 </SelectTrigger>
-                <SelectContent>
+              <SelectContent className="text-[13px] leading-5">
                   {filteredAPIs.map(api => (
                     <SelectItem key={api.id} value={api.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{api.name}</span>
-                        <span className="text-xs text-muted-foreground">{api.description}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">{api.name}</span>
+                      <span className="text-xs text-muted-foreground/90">{api.description}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -266,7 +286,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                     <Select value={sourceConfig.platform} onValueChange={(value) => 
                       setSourceConfig(prev => ({ ...prev, platform: value }))
                     }>
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1 h-10 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -283,7 +303,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                     <Select value={sourceConfig.environment} onValueChange={(value) => 
                       setSourceConfig(prev => ({ ...prev, environment: value }))
                     }>
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1 h-10 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -300,7 +320,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                     <Select value={sourceConfig.version} onValueChange={(value) => 
                       setSourceConfig(prev => ({ ...prev, version: value }))
                     }>
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1 h-10 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -366,7 +386,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                 <Button 
                   onClick={() => executeAPI('source')}
                   disabled={loading.source || !sourceAPI}
-                  className="w-full"
+                  className="w-full bg-cricbuzz-500 hover:bg-cricbuzz-600 text-white transition-transform duration-200 will-change-transform hover:scale-[1.01]"
                 >
                   {loading.source ? (
                     <>
@@ -375,7 +395,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 mr-2" />
+                      <span className="mr-2">🚀</span>
                       Execute Source API
                     </>
                   )}
@@ -407,19 +427,19 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
             {/* API Selection */}
             <div>
               <Label>Select API</Label>
-              <Select onValueChange={(value) => {
+              <Select value={targetAPI?.id} onValueChange={(value) => {
                 const api = filteredAPIs.find(a => a.id === value);
                 if (api) handleAPISelection('target', api);
               }}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className="mt-1 h-11 text-sm">
                   <SelectValue placeholder="Choose an API..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="text-[13px] leading-5">
                   {filteredAPIs.map(api => (
                     <SelectItem key={api.id} value={api.id}>
                       <div className="flex flex-col">
-                        <span className="font-medium">{api.name}</span>
-                        <span className="text-xs text-muted-foreground">{api.description}</span>
+                        <span className="font-medium text-foreground">{api.name}</span>
+                        <span className="text-xs text-muted-foreground/90">{api.description}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -536,7 +556,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                 <Button 
                   onClick={() => executeAPI('target')}
                   disabled={loading.target || !targetAPI}
-                  className="w-full"
+                  className="w-full bg-cricbuzz-500 hover:bg-cricbuzz-600 text-white transition-transform duration-200 will-change-transform hover:scale-[1.01]"
                 >
                   {loading.target ? (
                     <>
@@ -545,7 +565,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 mr-2" />
+                      <span className="mr-2">🚀</span>
                       Execute Target API
                     </>
                   )}

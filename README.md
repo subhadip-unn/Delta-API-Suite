@@ -1,176 +1,204 @@
-# Delta API Suite
+# 🚀 Delta API Suite
 
-> **Professional API Comparison & Testing Platform**  
-> Advanced JSON diff analysis with intelligent order-insensitive comparison
+> **Professional API Testing & Comparison Tool**  
+> Built for Cricbuzz by developers, for developers.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge)](https://expressjs.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3.2-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.3.5-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-10.16.16-0055FF?style=flat-square&logo=framer)](https://www.framer.com/motion/)
 
-## 🚀 Overview
+## ✨ Features
 
-Delta API Suite is a comprehensive API comparison and testing platform designed for QA engineers and developers. It provides powerful tools for API analysis:
-
-- **🔍 DeltaPro+**: Advanced single API comparison with intelligent diff analysis
-- **🏗️ DeltaBulkPro**: Bulk API testing across multiple platforms and environments
-
-## ✨ Key Features
-
-### 🎯 Advanced Comparison Engine
-- **Order-Insensitive JSON Comparison** - Semantic matching regardless of array order
-- **Intelligent Similarity Matching** - 3-phase algorithm with 95%/70% thresholds
-- **Severity Classification** - Critical/High/Medium/Low diff categorization
-- **Real-time Processing** - Instant analysis with professional UI
-
-### 🌍 Multi-Platform Testing
-- **Platform Support** - iOS, Android, Mobile Web, Desktop
-- **Geo-Location Testing** - Multi-region API comparison (IN, US, CA, AE)
-- **Custom Headers** - Platform-specific authentication and configuration
-- **Retry Logic** - Network resilience with configurable retry policies
-
-### 📊 Professional Reporting
-- **Interactive Monaco Diff Viewer** - Side-by-side JSON comparison
-- **Visual Diff Trees** - Expandable diff item visualization
-- **Comprehensive Summaries** - Statistical analysis with severity breakdown
-- **Export Capabilities** - JSON download and report sharing
-
-## 🏗️ Architecture
-
-```
-├── apps/
-│   ├── frontend/          # React + TypeScript + Vite
-│   │   ├── src/pages/     # Main application pages
-│   │   ├── src/components/# Reusable UI components
-│   │   └── src/services/  # API integration layer
-│   └── backend/           # Node.js + Express API
-│       ├── src/comparator.js  # Bulk comparison engine
-│       ├── src/server.js      # API endpoints
-│       └── src/utils.js       # Helper functions
-├── docs/                  # Project documentation
-└── config/               # Shared configuration
-```
+- 🎯 **API Journey** - Explore and test APIs from your configuration
+- 🔧 **Ad-hoc Compare** - Build custom requests with Postman-like interface
+- 📄 **Paste Response** - Compare responses directly by pasting JSON data
+- 🎨 **Modern UI/UX** - Professional design with Cricbuzz branding
+- 🌙 **Dark Mode** - Beautiful dark theme with smooth transitions
+- ⚡ **Performance** - Optimized for speed and efficiency
+- 📱 **Responsive** - Works perfectly on mobile and desktop
+- 🔒 **Secure** - CORS-free proxy with enterprise security
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+ 
-- npm or pnpm
-- Git
+- pnpm (recommended) or npm
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/subhadip-unn/CBZ-API-Delta-web.git
-   cd CBZ-API-Delta-web
+   git clone <repository-url>
+   cd cbz-api-delta-new
    ```
 
 2. **Install dependencies**
    ```bash
-   # Frontend
-   cd apps/frontend
-   npm install
-   
-   # Backend
-   cd ../backend
+   pnpm install
+   # or
    npm install
    ```
 
-3. **Start the development servers**
+3. **Start development server**
    ```bash
-   # Terminal 1 - Backend
-   cd apps/backend
-   npm run dev
-   
-   # Terminal 2 - Frontend
-   cd apps/frontend
+   pnpm dev
+   # or
    npm run dev
    ```
 
-4. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
+4. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-## 🔧 Configuration
+## 🏗️ Project Structure
+
+```
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes
+│   ├── deltapro/          # Main application page
+│   ├── globals.css        # Global styles
+│   └── layout.tsx         # Root layout
+├── components/            # Reusable components
+│   ├── ui/               # shadcn/ui components
+│   ├── modes/            # Feature-specific components
+│   ├── delta-logo.tsx    # Custom logo components
+│   └── theme-provider.tsx # Theme management
+├── lib/                   # Utility functions
+│   ├── api-library.ts    # API configuration
+│   ├── comparison-engine.ts # Core comparison logic
+│   └── utils.ts          # Helper functions
+└── public/               # Static assets
+```
+
+## 🎨 Design System
+
+### Brand Colors
+
+- **Cricbuzz Green**: `#53936F` - Primary brand color
+- **Delta Purple**: `#6366f1` - Secondary accent color
+- **Neutral Grays**: Professional grayscale palette
+
+### Typography
+
+- **Primary Font**: Inter (Google Fonts)
+- **Monospace**: JetBrains Mono
+- **Font Loading**: Optimized with `next/font`
+
+### Components
+
+Built with [shadcn/ui](https://ui.shadcn.com/) and enhanced with:
+- Custom animations using Framer Motion
+- Responsive design patterns
+- Accessibility-first approach
+- Dark mode support
+
+## 🔧 Development
+
+### Available Scripts
+
+```bash
+# Development
+pnpm dev          # Start development server
+pnpm build        # Build for production
+pnpm start        # Start production server
+pnpm lint         # Run ESLint
+
+# Analysis
+pnpm analyze      # Analyze bundle size
+```
+
+### Performance Monitoring
+
+The app includes built-in performance monitoring in development mode:
+- **LCP** (Largest Contentful Paint)
+- **FID** (First Input Delay) 
+- **CLS** (Cumulative Layout Shift)
+- **FCP** (First Contentful Paint)
+- **TTFB** (Time to First Byte)
+
+### Code Quality
+
+- **TypeScript** - Strict type checking
+- **ESLint** - Code linting and formatting
+- **Prettier** - Code formatting (recommended)
+- **Husky** - Git hooks (optional)
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. Push to GitHub
+2. Connect to Vercel
+3. Deploy automatically
+
+### Docker
+
+```bash
+# Build image
+docker build -t delta-api-suite .
+
+# Run container
+docker run -p 3000:3000 delta-api-suite
+```
 
 ### Environment Variables
 
-Create `.env.local` files in both frontend and backend directories:
-
-**Frontend (.env.local)**
-```env
-VITE_BACKEND_URL=http://localhost:3001
-VITE_APP_NAME=Delta API Suite
+```bash
+# .env.local
+NEXT_PUBLIC_API_BASE_URL=https://apiprv.cricbuzz.com
+NEXT_PUBLIC_APP_NAME=Delta API Suite
+NEXT_PUBLIC_APP_VERSION=1.0.0
 ```
 
-**Backend (.env.local)**
-```env
-PORT=3001
-NODE_ENV=development
-```
+## 📱 Responsive Design
 
-## 📖 Usage
+- **Mobile First** - Optimized for mobile devices
+- **Breakpoints** - sm, md, lg, xl, 2xl
+- **Touch Friendly** - 44px minimum touch targets
+- **Accessible** - WCAG 2.1 AA compliant
 
-### DeltaPro+ (Single API Comparison)
-1. Navigate to the DeltaPro+ tool in the sidebar
-2. Configure your API endpoints (Live vs New)
-3. Add headers and authentication
-4. Fetch both endpoints
-5. Compare with advanced diff analysis
+## 🌙 Dark Mode
 
-### DeltaBulkPro (Bulk API Testing)
-1. Go to Config Editor
-2. Set up endpoints, headers, and platforms
-3. Configure comparison jobs
-4. Run bulk comparison
-5. View comprehensive reports
+- **System Preference** - Follows OS theme
+- **Manual Toggle** - User-controlled switching
+- **Smooth Transitions** - Animated theme changes
+- **Consistent Branding** - Maintains brand colors
 
-## 🔌 API Endpoints
+## 🔒 Security
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/compare` | Run bulk API comparison |
-| `GET` | `/api/reports` | List all reports |
-| `GET` | `/api/reports/:id` | Get specific report |
-| `POST` | `/api/upload-report` | Upload custom report |
-| `POST` | `/api/proxy-fetch` | CORS proxy for external APIs |
+- **CORS Headers** - Properly configured
+- **Content Security Policy** - XSS protection
+- **Input Validation** - Sanitized user inputs
+- **Rate Limiting** - API protection (configurable)
 
-## 🎨 Tech Stack
+## 📊 Performance
 
-### Frontend
-- **React 18** - Modern UI framework
-- **TypeScript** - Type-safe development
-- **Vite** - Fast build tool
-- **Tailwind CSS** - Utility-first styling
-- **shadcn/ui** - Professional component library
-- **Monaco Editor** - Advanced code editor
-- **Framer Motion** - Smooth animations
-
-### Backend
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **CORS** - Cross-origin resource sharing
-- **In-memory Storage** - No database dependency
+- **Bundle Size** - Optimized with tree shaking
+- **Code Splitting** - Dynamic imports for heavy components
+- **Image Optimization** - Next.js Image component
+- **Caching** - Strategic caching strategies
+- **Core Web Vitals** - Optimized for Google metrics
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-## 📝 License
+## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is proprietary to Cricbuzz. All rights reserved.
 
-## 🙏 Acknowledgments
+## 🆘 Support
 
-- Built with ❤️ for the QA engineering community
-- Inspired by the need for better API testing tools
-- Special thanks to all contributors and testers
+For support and questions:
+- Create an issue in the repository
+- Contact the development team
+- Check the documentation
 
 ---
 
-**Made with ❤️ by the Delta API Suite Team**
+**Built with ❤️ by the Cricbuzz Team**
