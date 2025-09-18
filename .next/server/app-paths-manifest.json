@@ -1,5 +1,4 @@
 {
-  "/deltapro/page": "app/deltapro/page.js",
   "/page": "app/page.js",
-  "/api/proxy/route": "app/api/proxy/route.js"
+  "/deltapro/page": "app/deltapro/page.js"
 }

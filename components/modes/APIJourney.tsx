@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 // Simple icon components to avoid hydration issues
 const Play = ({ className }: { className?: string }) => <span className={className}>▶️</span>;
 const Loader2 = ({ className }: { className?: string }) => <span className={`${className} animate-spin`}>⟳</span>;
@@ -42,6 +43,7 @@ interface APIJourneyProps {
 export default function APIJourney({ onAPIExecute, sourceResponse, targetResponse, loading, error }: APIJourneyProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('home');
+  const [browseOpen, setBrowseOpen] = useState(false);
   const [sourceAPI, setSourceAPI] = useState<APIEndpoint | null>(null);
   const [targetAPI, setTargetAPI] = useState<APIEndpoint | null>(null);
   const [autofillTarget, setAutofillTarget] = useState(true);
@@ -193,7 +195,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
 
   return (
     <div className="space-y-6">
-      {/* Search and Category Filter */}
+      {/* Integrated Search + Browse Button */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -202,46 +204,148 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Search APIs</Label>
+          <div className="space-y-4">
+            {/* Single search input with right-side Browse action */}
+            <div className="relative">
               <Input
-                placeholder="Search by name, description, or path..."
+                placeholder="Search APIs by name, description, or path..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="mt-1"
+                className="h-11 pr-36 pl-10"
               />
-              {searchQuery && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Found {filteredAPIs.length} APIs matching "{searchQuery}"
-                </p>
-              )}
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔎</span>
+              <Button
+                type="button"
+                variant="outline"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 text-xs"
+                onClick={() => setBrowseOpen(true)}
+              >
+                Browse Library
+              </Button>
             </div>
-            <div>
-              <Label>Category</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* Lightweight inline results list (clickable) */}
+            {searchQuery && (
+              <div className="max-h-64 overflow-y-auto rounded-md border bg-card/50 backdrop-blur-sm">
+                {filteredAPIs.length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground">No results</div>
+                ) : (
+                  <ul className="divide-y">
+                    {filteredAPIs.slice(0, 12).map((api) => (
+                      <li key={api.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(api.category);
+                            handleAPISelection('source', api);
+                          }}
+                          className="w-full text-left p-3 hover:bg-muted/60 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{api.name}</div>
+                              <div className="text-xs text-muted-foreground truncate">{api.description}</div>
+                              <div className="text-[10px] text-muted-foreground font-mono truncate">{api.pathTemplate}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px]">
+                                {api.category}
+                              </Badge>
+                              <Badge 
+                                variant={api.method === 'GET' ? 'default' : api.method === 'POST' ? 'destructive' : 'secondary'}
+                                className="text-[10px]"
+                              >
+                                {api.method}
+                              </Badge>
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* Autofill toggle */}
+            <div className="flex items-center space-x-2">
+              <Switch id="autofill-target" checked={autofillTarget} onCheckedChange={setAutofillTarget} />
+              <Label htmlFor="autofill-target" className="text-sm">
+                Auto-fill Target with selected Source API
+              </Label>
             </div>
-          </div>
-          {/* Autofill toggle */}
-          <div className="mt-4 flex items-center space-x-2">
-            <Switch id="autofill-target" checked={autofillTarget} onCheckedChange={setAutofillTarget} />
-            <Label htmlFor="autofill-target" className="text-sm">
-              Auto-fill Target with selected Source API
-            </Label>
           </div>
         </CardContent>
       </Card>
+
+      {/* Browse Library Dialog */}
+      <Dialog open={browseOpen} onOpenChange={setBrowseOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>API Library</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Category column */}
+            <div className="md:col-span-1 border rounded-md overflow-hidden">
+              <div className="p-2 border-b text-xs text-muted-foreground">Categories</div>
+              <ul className="max-h-80 overflow-y-auto">
+                {categories.map((cat) => (
+                  <li key={cat}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-muted ${selectedCategory === cat ? 'bg-muted' : ''}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="capitalize truncate">{cat}</span>
+                        <Badge variant="outline" className="text-[10px] ml-2">
+                          {getAPIsByCategory(cat).length}
+                        </Badge>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* API list column */}
+            <div className="md:col-span-2 border rounded-md overflow-hidden">
+              <div className="p-2 border-b text-xs text-muted-foreground flex items-center justify-between">
+                <span className="truncate">{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} APIs</span>
+                <span className="text-[10px] text-muted-foreground">Click to select</span>
+              </div>
+              <ul className="max-h-80 overflow-y-auto divide-y">
+                {getAPIsByCategory(selectedCategory).map((api) => (
+                  <li key={api.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(api.category);
+                        handleAPISelection('source', api);
+                        setBrowseOpen(false);
+                      }}
+                      className="w-full text-left p-3 hover:bg-muted/60"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{api.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{api.description}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono truncate">{api.pathTemplate}</div>
+                        </div>
+                        <Badge 
+                          variant={api.method === 'GET' ? 'default' : api.method === 'POST' ? 'destructive' : 'secondary'}
+                          className="text-[10px]"
+                        >
+                          {api.method}
+                        </Badge>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* API Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
