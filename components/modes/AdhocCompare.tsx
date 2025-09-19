@@ -15,7 +15,10 @@ import {
   Code,
   ArrowRight,
   Copy,
-  Trash2
+  Trash2,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 
 interface AdhocCompareProps {
@@ -50,6 +53,11 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
   const [newHeaderKey, setNewHeaderKey] = useState('');
   const [newHeaderValue, setNewHeaderValue] = useState('');
 
+  // URL editing states
+  const [editingURL, setEditingURL] = useState<string | null>(null);
+  const [editedURL, setEditedURL] = useState<string>('');
+  const [customURLs, setCustomURLs] = useState<Record<string, string>>({});
+
   // Generate full URL
   const generateURL = (request: typeof sourceRequest) => {
     // Replace {version} in path with selected version to prevent duplication
@@ -57,14 +65,114 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
     return `${request.baseUrl}${request.platform}${dynamicPath}`;
   };
 
+  // URL editing functions
+  const handleEditURL = (url: string, key: string) => {
+    setEditingURL(key);
+    setEditedURL(url);
+  };
+
+  const handleSaveURL = (key: string) => {
+    setCustomURLs(prev => ({ ...prev, [key]: editedURL }));
+    setEditingURL(null);
+    setEditedURL('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingURL(null);
+    setEditedURL('');
+  };
+
+  const handleCopyURL = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
+
+  const getDisplayURL = (originalURL: string, key: string) => {
+    return customURLs[key] || originalURL;
+  };
+
+  // Reusable URL Editor Component
+  const URLEditor = ({ url, key, label }: { url: string; key: string; label: string }) => {
+    const displayURL = getDisplayURL(url, key);
+    const isEditing = editingURL === key;
+
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs">{label}</Label>
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <>
+              <Input
+                value={editedURL}
+                onChange={(e) => setEditedURL(e.target.value)}
+                className="flex-1 text-xs font-mono"
+                placeholder="Enter custom URL..."
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleSaveURL(key)}
+                className="h-8 w-8 p-0"
+              >
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCancelEdit}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="flex-1 text-xs font-mono bg-muted/50 p-2 rounded border break-all">
+                {displayURL}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleEditURL(displayURL, key)}
+                className="h-8 w-8 p-0"
+              >
+                <Edit2 className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleCopyURL(displayURL)}
+                className="h-8 w-8 p-0"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Execute request
   const executeRequest = async (side: 'source' | 'target') => {
     const request = side === 'source' ? sourceRequest : targetRequest;
-    const fullURL = generateURL(request);
+    const generatedURL = generateURL(request);
+    const customURL = customURLs[`${side}-request`];
+    const finalURL = customURL || generatedURL;
+
+    console.log(`🚀 Executing ${side.toUpperCase()} Request:`, {
+      originalURL: generatedURL,
+      customURL: customURL,
+      finalURL: finalURL,
+      usingCustom: !!customURL
+    });
 
     onAPIExecute(side, {
       method: request.method,
-      url: fullURL,
+      url: finalURL,
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Delta-API-Suite/1.0',
@@ -232,12 +340,11 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             </div>
 
             {/* Preview URL */}
-            <div>
-              <Label className="text-xs">Preview URL</Label>
-              <div className="p-2 bg-muted rounded text-xs font-mono break-all mt-1">
-                {generateURL(sourceRequest)}
-              </div>
-            </div>
+            <URLEditor 
+              url={generateURL(sourceRequest)}
+              key="source-request"
+              label="Preview URL"
+            />
 
             {/* Headers */}
             <div>
@@ -444,12 +551,11 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             </div>
 
             {/* Preview URL */}
-            <div>
-              <Label className="text-xs">Preview URL</Label>
-              <div className="p-2 bg-muted rounded text-xs font-mono break-all mt-1">
-                {generateURL(targetRequest)}
-              </div>
-            </div>
+            <URLEditor 
+              url={generateURL(targetRequest)}
+              key="target-request"
+              label="Preview URL"
+            />
 
             {/* Headers */}
             <div>

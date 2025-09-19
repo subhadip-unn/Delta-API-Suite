@@ -10,20 +10,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-// Simple icon components to avoid hydration issues
-const Play = ({ className }: { className?: string }) => <span className={className}>▶️</span>;
-const Loader2 = ({ className }: { className?: string }) => <span className={`${className} animate-spin`}>⟳</span>;
-const CheckCircle = ({ className }: { className?: string }) => <span className={className}>✅</span>;
-const AlertCircle = ({ className }: { className?: string }) => <span className={className}>⚠️</span>;
-const Globe = ({ className }: { className?: string }) => <span className={className}>🌐</span>;
-const Settings = ({ className }: { className?: string }) => <span className={className}>⚙️</span>;
-const Zap = ({ className }: { className?: string }) => <span className={className}>⚡</span>;
-const Code = ({ className }: { className?: string }) => <span className={className}>💻</span>;
-const ArrowRight = ({ className }: { className?: string }) => <span className={className}>→</span>;
-const RefreshCw = ({ className }: { className?: string }) => <span className={className}>🔄</span>;
-const Search = ({ className }: { className?: string }) => <span className={className}>🔍</span>;
-const Clock = ({ className }: { className?: string }) => <span className={className}>🕐</span>;
-const ChevronDown = ({ className }: { className?: string }) => <span className={className}>⌄</span>;
+import { 
+  Play, 
+  Loader2, 
+  CheckCircle,
+  AlertCircle, 
+  Globe, 
+  Settings,
+  Zap,
+  Code,
+  ArrowRight,
+  RefreshCw,
+  Search,
+  Clock,
+  ChevronDown,
+  Edit2,
+  Check,
+  X,
+  Copy
+} from 'lucide-react';
 import { 
   apiCatalog, 
   PLATFORMS, 
@@ -75,6 +80,11 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   // Simple hover behavior with delay to prevent flickering
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  // URL editing states
+  const [editingURL, setEditingURL] = useState<string | null>(null);
+  const [editedURL, setEditedURL] = useState<string>('');
+  const [customURLs, setCustomURLs] = useState<Record<string, string>>({});
+
   const handleAPIHover = (api: APIEndpoint) => {
     // Clear any existing timeout immediately
     if (hoverTimeout) {
@@ -85,9 +95,6 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     // Set preview immediately for instant response
     setHoveredAPI(api);
     setPreviewAPI(api);
-    
-    // Debug log to help identify issues
-    console.log('Hovering over API:', api.name, 'Preview set:', !!api);
   };
 
   const handleAPILear = () => {
@@ -124,6 +131,98 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
       setPreviewAPI(null);
     }, 100); // Reduced delay for better responsiveness
     setHoverTimeout(timeout);
+  };
+
+  // URL editing functions
+  const handleEditURL = (url: string, key: string) => {
+    setEditingURL(key);
+    setEditedURL(url);
+  };
+
+  const handleSaveURL = (key: string) => {
+    setCustomURLs(prev => ({ ...prev, [key]: editedURL }));
+    setEditingURL(null);
+    setEditedURL('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingURL(null);
+    setEditedURL('');
+  };
+
+  const handleCopyURL = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
+
+  const getDisplayURL = (originalURL: string, key: string) => {
+    return customURLs[key] || originalURL;
+  };
+
+  // Reusable URL Editor Component
+  const URLEditor = ({ url, key, label }: { url: string; key: string; label: string }) => {
+    const displayURL = getDisplayURL(url, key);
+    const isEditing = editingURL === key;
+
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs">{label}</Label>
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <>
+              <Input
+                value={editedURL}
+                onChange={(e) => setEditedURL(e.target.value)}
+                className="flex-1 text-xs font-mono"
+                placeholder="Enter custom URL..."
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleSaveURL(key)}
+                className="h-8 w-8 p-0"
+              >
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCancelEdit}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="flex-1 text-xs font-mono bg-muted/50 p-2 rounded border break-all">
+                {displayURL}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleEditURL(displayURL, key)}
+                className="h-8 w-8 p-0"
+              >
+                <Edit2 className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleCopyURL(displayURL)}
+                className="h-8 w-8 p-0"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
   };
 
   // Cleanup timeout on unmount
@@ -263,8 +362,21 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     const api = side === 'source' ? sourceAPI : targetAPI;
     const params = side === 'source' ? sourceParams : targetParams;
     const config = side === 'source' ? sourceConfig : targetConfig;
-
+    
     if (!api) return;
+
+    // Get the URL being used (custom or generated)
+    const generatedURL = generatePreviewURL(api, params, config);
+    const customURL = customURLs[`${side}-${api.id}`];
+    const finalURL = customURL || generatedURL;
+    
+    console.log(`🚀 Executing ${side.toUpperCase()} API:`, {
+      apiName: api.name,
+      originalURL: generatedURL,
+      customURL: customURL,
+      finalURL: finalURL,
+      usingCustom: !!customURL
+    });
 
     // Validate parameters
     const errors: Record<string, string> = {};
@@ -284,15 +396,8 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
       return;
     }
 
-    // Generate URL
-    const environment = ENVIRONMENTS.find(env => env.id === config.environment);
-    const fullURL = generateFullURL(
-      environment?.baseUrl || '',
-      api.pathTemplate,
-      config.platform,
-      config.version,
-      params
-    );
+    // Use the final URL (custom or generated)
+    const fullURL = finalURL;
 
     // Prepare request body for POST/PUT requests
     let requestBody = undefined;
@@ -351,8 +456,6 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Search className="w-5 h-5" />
-            <span>API Explorer</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -443,25 +546,21 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
           setPreviewAPI(null);
         }
       }}>
-        <DialogContent className="max-w-6xl h-[85vh] flex flex-col" onKeyDown={handleKeyDown}>
+        <DialogContent className="max-w-6xl h-[85vh] flex flex-col [&>button]:hidden" onKeyDown={handleKeyDown}>
           <DialogHeader className="pb-3 flex-shrink-0">
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-cricbuzz-500 rounded-full"></div>
+                <div className="w-6 h-6 bg-cricbuzz-500 rounded-full"></div>
                 <span className="text-lg font-semibold">API Library Explorer</span>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Tab</kbd>
-                  <span>Navigate</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Enter</kbd>
-                  <span>Select</span>
-                </div>
-                <div className="flex items-center gap-1">
                   <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Hover</kbd>
                   <span>Preview</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Click</kbd>
+                  <span>Select</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Esc</kbd>
@@ -870,10 +969,11 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                       {sourceAPI.method}
                     </Badge>
                   </div>
-                  <Label className="text-xs">Preview URL</Label>
-                  <div className="p-2 bg-muted rounded text-xs font-mono break-all">
-                    {generatePreviewURL(sourceAPI, sourceParams, sourceConfig)}
-                  </div>
+                  <URLEditor 
+                    url={generatePreviewURL(sourceAPI, sourceParams, sourceConfig)}
+                    key={`source-${sourceAPI.id}`}
+                    label="Preview URL"
+                  />
                 </div>
 
                 {/* Execute Button */}
@@ -1040,10 +1140,11 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                       {targetAPI.method}
                     </Badge>
                   </div>
-                  <Label className="text-xs">Preview URL</Label>
-                  <div className="p-2 bg-muted rounded text-xs font-mono break-all">
-                    {generatePreviewURL(targetAPI, targetParams, targetConfig)}
-                  </div>
+                  <URLEditor 
+                    url={generatePreviewURL(targetAPI, targetParams, targetConfig)}
+                    key={`target-${targetAPI.id}`}
+                    label="Preview URL"
+                  />
                 </div>
 
                 {/* Execute Button */}

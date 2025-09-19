@@ -370,7 +370,7 @@ export default function DeltaProPage() {
                   <Card className="card-hover border-cricbuzz-200 dark:border-cricbuzz-800">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-cricbuzz-500 rounded-full animate-pulse"></div>
+                        <div className="w-3 h-3 bg-cricbuzz-500 rounded-full animate-pulse"></div>
                         <span>Source Response</span>
                         <Badge variant="outline" className="ml-auto text-xs">
                           <CheckCircle className="w-3 h-3 mr-1" />
