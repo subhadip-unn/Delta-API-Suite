@@ -23,6 +23,7 @@ export const ENVIRONMENTS = [
 export interface APIEndpoint {
   id: string;
   category: string;
+  group?: string;
   key: string;
   name: string;
   description: string;
@@ -431,7 +432,8 @@ function generateAPICatalog(): APIEndpoint[] {
               apiKey.includes('auth') || apiKey.includes('verify') ||
               apiKey.includes('logout') || apiKey.includes('update') ||
               apiKey.includes('delete') || apiKey.includes('redeem') ||
-              apiKey.includes('unlock')) {
+              apiKey.includes('unlock') || apiKey.includes('submit') ||
+              apiKey.includes('form')) {
             method = 'POST';
           }
           
@@ -444,6 +446,13 @@ function generateAPICatalog(): APIEndpoint[] {
           // Delete operations
           if (apiKey.includes('delete') || apiKey.includes('remove')) {
             method = 'DELETE';
+          }
+          
+          // Image/Asset APIs are typically GET
+          if (categoryKey === 'images' || categoryKey === 'assets' || 
+              apiKey.includes('url') || apiKey.includes('image') || 
+              apiKey.includes('static') || apiKey.includes('asset')) {
+            method = 'GET';
           }
 
           catalog.push({

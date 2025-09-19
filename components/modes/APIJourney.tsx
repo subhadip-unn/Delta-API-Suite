@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 // Simple icon components to avoid hydration issues
 const Play = ({ className }: { className?: string }) => <span className={className}>▶️</span>;
 const Loader2 = ({ className }: { className?: string }) => <span className={`${className} animate-spin`}>⟳</span>;
@@ -21,6 +22,8 @@ const Code = ({ className }: { className?: string }) => <span className={classNa
 const ArrowRight = ({ className }: { className?: string }) => <span className={className}>→</span>;
 const RefreshCw = ({ className }: { className?: string }) => <span className={className}>🔄</span>;
 const Search = ({ className }: { className?: string }) => <span className={className}>🔍</span>;
+const Clock = ({ className }: { className?: string }) => <span className={className}>🕐</span>;
+const ChevronDown = ({ className }: { className?: string }) => <span className={className}>⌄</span>;
 import { 
   apiCatalog, 
   PLATFORMS, 
@@ -44,6 +47,78 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('home');
   const [browseOpen, setBrowseOpen] = useState(false);
+  const [recentlyUsed, setRecentlyUsed] = useState<APIEndpoint[]>([]);
+
+  // Load recently used APIs from localStorage on component mount
+  useEffect(() => {
+    const stored = localStorage.getItem('delta-api-recently-used');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setRecentlyUsed(parsed);
+      } catch (error) {
+        console.warn('Failed to parse recently used APIs from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Save recently used APIs to localStorage whenever it changes
+  useEffect(() => {
+    if (recentlyUsed.length > 0) {
+      localStorage.setItem('delta-api-recently-used', JSON.stringify(recentlyUsed));
+    }
+  }, [recentlyUsed]);
+  const [previewAPI, setPreviewAPI] = useState<APIEndpoint | null>(null);
+  const [focusedItem, setFocusedItem] = useState<{type: 'category' | 'api', id: string} | null>(null);
+  const [hoveredAPI, setHoveredAPI] = useState<APIEndpoint | null>(null);
+
+  // Simple hover behavior with delay to prevent flickering
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  const handleAPIHover = (api: APIEndpoint) => {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+    setHoveredAPI(api);
+    setPreviewAPI(api);
+  };
+
+  const handleAPILear = () => {
+    // Add a delay to prevent flickering when moving between elements
+    const timeout = setTimeout(() => {
+      setHoveredAPI(null);
+      setPreviewAPI(null);
+    }, 300); // Increased delay for better reliability
+    setHoverTimeout(timeout);
+  };
+
+  const handlePanelEnter = () => {
+    // Clear timeout when entering panel to prevent it from disappearing
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+  };
+
+  const handlePanelLeave = () => {
+    // Add delay when leaving panel to prevent flickering
+    const timeout = setTimeout(() => {
+      setHoveredAPI(null);
+      setPreviewAPI(null);
+    }, 200);
+    setHoverTimeout(timeout);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+      }
+    };
+  }, [hoverTimeout]);
   const [sourceAPI, setSourceAPI] = useState<APIEndpoint | null>(null);
   const [targetAPI, setTargetAPI] = useState<APIEndpoint | null>(null);
   const [autofillTarget, setAutofillTarget] = useState(true);
@@ -91,10 +166,121 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
           version: sourceConfig.version === 'v1' ? 'v2' : sourceConfig.version
         }));
       }
+      // Add to recently used
+      setRecentlyUsed(prev => {
+        const filtered = prev.filter(item => item.id !== api.id);
+        return [api, ...filtered].slice(0, 5);
+      });
     } else {
       setTargetAPI(api);
       setTargetParams({});
     }
+  };
+
+
+  // Generate example URL for preview
+  const generateExampleURL = (api: APIEndpoint) => {
+    const platform = sourceConfig.platform;
+    const version = sourceConfig.version;
+    const environment = sourceConfig.environment;
+    const baseUrl = ENVIRONMENTS.find(env => env.id === environment)?.baseUrl || 'http://apiprv.cricbuzz.com';
+    
+    let path = api.pathTemplate
+      .replace('{platform}', platform)
+      .replace('{version}', version)
+      .replace('{id}', '12345')
+      .replace('{pageType}', 'live')
+      .replace('{iid}', '67890')
+      .replace('{playerId}', '12345')
+      .replace('{type}', 'batting')
+      .replace('{matchId}', '12345')
+      .replace('{videoId}', '12345')
+      .replace('{buzzType}', 'video')
+      .replace('{buzzId}', '12345');
+    
+    return `${baseUrl}${path}`;
+  };
+
+  // Keyboard navigation handler
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!browseOpen) return;
+    
+    const { key } = e;
+    
+    if (key === 'Escape') {
+      if (previewAPI) {
+        setPreviewAPI(null);
+        setHoveredAPI(null);
+      } else {
+        setBrowseOpen(false);
+      }
+      return;
+    }
+    
+    if (key === 'Enter' && focusedItem) {
+      e.preventDefault();
+      if (focusedItem.type === 'category') {
+        setSelectedCategory(focusedItem.id);
+        setPreviewAPI(null);
+        setHoveredAPI(null);
+      } else if (focusedItem.type === 'api') {
+        const api = getAPIsByCategory(selectedCategory).find(a => a.id === focusedItem.id);
+        if (api) {
+          handleAPISelection('source', api);
+          setBrowseOpen(false);
+        }
+      }
+    }
+    
+    // Arrow key navigation
+    if (key === 'ArrowDown' || key === 'ArrowUp') {
+      e.preventDefault();
+      const currentIndex = getCurrentFocusedIndex();
+      const nextIndex = key === 'ArrowDown' ? currentIndex + 1 : currentIndex - 1;
+      const nextItem = getNextFocusedItem(nextIndex);
+      if (nextItem) {
+        setFocusedItem(nextItem);
+        if (nextItem.type === 'api') {
+          const api = getAPIsByCategory(selectedCategory).find(a => a.id === nextItem.id);
+          if (api) {
+            setPreviewAPI(api);
+            setHoveredAPI(api);
+          }
+        } else {
+          setPreviewAPI(null);
+          setHoveredAPI(null);
+        }
+      }
+    }
+  };
+
+  // Get current focused item index
+  const getCurrentFocusedIndex = () => {
+    if (!focusedItem) return -1;
+    
+    if (focusedItem.type === 'category') {
+      return categories.findIndex(cat => cat === focusedItem.id);
+    } else if (focusedItem.type === 'api') {
+      const categoryAPIs = getAPIsByCategory(selectedCategory);
+      return categoryAPIs.findIndex(api => api.id === focusedItem.id);
+    }
+    return -1;
+  };
+
+  // Get next focused item
+  const getNextFocusedItem = (index: number) => {
+    if (selectedCategory) {
+      const categoryAPIs = getAPIsByCategory(selectedCategory);
+      if (index >= 0 && index < categoryAPIs.length) {
+        return { type: 'api' as const, id: categoryAPIs[index].id };
+      }
+    }
+    
+    if (index >= 0 && index < categories.length) {
+      return { type: 'category' as const, id: categories[index] };
+    }
+    
+    return null;
   };
 
   // Handle parameter change
@@ -205,23 +391,28 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Single search input with right-side Browse action */}
+            {/* Single search input with integrated Browse button */}
             <div className="relative">
               <Input
                 placeholder="Search APIs by name, description, or path..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 pr-36 pl-10"
+                className="h-11 pr-32 pl-10"
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔎</span>
-              <Button
-                type="button"
-                variant="outline"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-3 text-xs"
-                onClick={() => setBrowseOpen(true)}
-              >
-                Browse Library
-              </Button>
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                <div className="h-6 w-px bg-border mr-2"></div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-3 text-xs hover:bg-muted/60 rounded-md"
+                  onClick={() => setBrowseOpen(true)}
+                >
+                  <ChevronDown className="w-3 h-3 mr-1" />
+                  Browse
+                </Button>
+              </div>
             </div>
 
             {/* Lightweight inline results list (clickable) */}
@@ -278,72 +469,295 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
         </CardContent>
       </Card>
 
-      {/* Browse Library Dialog */}
-      <Dialog open={browseOpen} onOpenChange={setBrowseOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>API Library</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Category column */}
-            <div className="md:col-span-1 border rounded-md overflow-hidden">
-              <div className="p-2 border-b text-xs text-muted-foreground">Categories</div>
-              <ul className="max-h-80 overflow-y-auto">
-                {categories.map((cat) => (
-                  <li key={cat}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-muted ${selectedCategory === cat ? 'bg-muted' : ''}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="capitalize truncate">{cat}</span>
-                        <Badge variant="outline" className="text-[10px] ml-2">
-                          {getAPIsByCategory(cat).length}
-                        </Badge>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {/* API list column */}
-            <div className="md:col-span-2 border rounded-md overflow-hidden">
-              <div className="p-2 border-b text-xs text-muted-foreground flex items-center justify-between">
-                <span className="truncate">{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} APIs</span>
-                <span className="text-[10px] text-muted-foreground">Click to select</span>
+      {/* Advanced Browse Library Dialog */}
+      <Dialog open={browseOpen} onOpenChange={(open) => {
+        setBrowseOpen(open);
+        if (!open) {
+          setFocusedItem(null);
+          setPreviewAPI(null);
+        }
+      }}>
+        <DialogContent className="max-w-6xl h-[85vh] flex flex-col" onKeyDown={handleKeyDown}>
+          <DialogHeader className="pb-3 flex-shrink-0">
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-cricbuzz-500 rounded-full"></div>
+                <span className="text-lg font-semibold">API Library Explorer</span>
               </div>
-              <ul className="max-h-80 overflow-y-auto divide-y">
-                {getAPIsByCategory(selectedCategory).map((api) => (
-                  <li key={api.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategory(api.category);
-                        handleAPISelection('source', api);
-                        setBrowseOpen(false);
-                      }}
-                      className="w-full text-left p-3 hover:bg-muted/60"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{api.name}</div>
-                          <div className="text-xs text-muted-foreground truncate">{api.description}</div>
-                          <div className="text-[10px] text-muted-foreground font-mono truncate">{api.pathTemplate}</div>
-                        </div>
-                        <Badge 
-                          variant={api.method === 'GET' ? 'default' : api.method === 'POST' ? 'destructive' : 'secondary'}
-                          className="text-[10px]"
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">↑↓</kbd>
+                  <span>Navigate</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Enter</kbd>
+                  <span>Select</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Hover</kbd>
+                  <span>Preview</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Esc</kbd>
+                  <span>Close</span>
+                </div>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-12 gap-4 flex-1 min-h-0">
+            {/* Categories - Left Column */}
+            <div className="col-span-3 border rounded-lg overflow-hidden flex flex-col">
+              {/* Recent APIs Section */}
+              {recentlyUsed.length > 0 && (
+                <div className="border-b flex-shrink-0">
+                  <div className="p-3 bg-muted/20">
+                    <h3 className="font-medium text-sm flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Recent
+                    </h3>
+                  </div>
+                  <div className="p-2 space-y-1 max-h-32 overflow-y-auto">
+                    {recentlyUsed.slice(0, 3).map((api) => (
+                      <button
+                        key={api.id}
+                        type="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          setSelectedCategory(api.category);
+                          handleAPISelection('source', api);
+                          setBrowseOpen(false);
+                        }}
+                        onMouseEnter={() => {
+                          setPreviewAPI(api);
+                          setFocusedItem({ type: 'api', id: api.id });
+                        }}
+                        className="w-full text-left p-2 rounded text-xs hover:bg-muted/60 transition-colors"
+                      >
+                        <div className="font-medium truncate">{api.name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{api.category}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Categories Section */}
+              <div className="p-3 border-b bg-muted/30 flex-shrink-0">
+                <h3 className="font-medium text-sm">Categories</h3>
+              </div>
+              <div className="flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                  <div className="p-2 space-y-1 pb-4">
+                    {categories.map((cat) => (
+                      <div key={cat} className="mx-1">
+                        <button
+                          type="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            setSelectedCategory(cat);
+                            setPreviewAPI(null);
+                            setFocusedItem({ type: 'category', id: cat });
+                          }}
+                          onMouseEnter={() => {
+                            setPreviewAPI(null);
+                            setFocusedItem({ type: 'category', id: cat });
+                          }}
+                          className={`w-full text-left p-2 rounded text-sm hover:bg-muted/60 transition-colors ${
+                            selectedCategory === cat ? 'bg-muted' : ''
+                          } ${
+                            focusedItem?.type === 'category' && focusedItem?.id === cat ? 'ring-2 ring-cricbuzz-500 bg-cricbuzz-50 dark:bg-cricbuzz-950/20' : ''
+                          }`}
                         >
-                          {api.method}
-                        </Badge>
+                        <div className="flex items-center justify-between">
+                          <span className="capitalize truncate">{cat}</span>
+                          <Badge variant="outline" className="text-[10px] ml-2">
+                            {getAPIsByCategory(cat).length}
+                          </Badge>
+                        </div>
+                        </button>
                       </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+
+            {/* APIs - Expanded Middle Column */}
+            <div className="col-span-9 border rounded-lg overflow-hidden flex flex-col">
+              <div className="p-3 border-b bg-muted/30 flex-shrink-0">
+                <h3 className="font-medium text-sm">
+                  {selectedCategory ? `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} APIs` : 'Select Category'}
+                </h3>
+              </div>
+              <div className="flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                  {selectedCategory ? (
+                    <div className="p-2 space-y-2 pb-4">
+                      {getAPIsByCategory(selectedCategory).map((api) => (
+                        <div key={api.id} className="mx-1">
+                          <button
+                            type="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              handleAPISelection('source', api);
+                              setBrowseOpen(false);
+                            }}
+                            onMouseEnter={() => handleAPIHover(api)}
+                            onMouseLeave={handleAPILear}
+                            onFocus={() => {
+                              setPreviewAPI(api);
+                              setFocusedItem({ type: 'api', id: api.id });
+                            }}
+                            className={`w-full text-left p-3 rounded-lg text-sm hover:bg-muted/60 transition-all duration-200 ${
+                              focusedItem?.type === 'api' && focusedItem?.id === api.id ? 'ring-2 ring-cricbuzz-500 bg-cricbuzz-50 dark:bg-cricbuzz-950/20 shadow-sm' : ''
+                            }`}
+                            data-api-item
+                          >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="font-medium text-base">{api.name}</div>
+                                <Badge 
+                                  variant={api.method === 'GET' ? 'default' : api.method === 'POST' ? 'destructive' : 'secondary'}
+                                  className="text-[10px] px-2 py-0.5"
+                                >
+                                  {api.method}
+                                </Badge>
+                              </div>
+                              <div className="text-sm text-muted-foreground mb-2">{api.description}</div>
+                              <div className="text-xs text-muted-foreground font-mono bg-muted/50 p-2 rounded border break-all overflow-x-auto">
+                                <code className="whitespace-pre-wrap">{api.pathTemplate}</code>
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                              <Badge variant="outline" className="text-[10px]">
+                                {api.category}
+                              </Badge>
+                              <div className="text-[10px] text-muted-foreground">
+                                {api.parameters?.length || 0} params
+                              </div>
+                            </div>
+                          </div>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center text-muted-foreground">
+                      <div className="text-4xl mb-4">🔍</div>
+                      <p className="text-sm">Select a category to view APIs</p>
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
             </div>
           </div>
+
+          {/* Simple Floating Preview Panel */}
+          {previewAPI && (
+            <div 
+              className="absolute w-80 max-h-[70vh] bg-background border rounded-lg shadow-2xl z-[40] overflow-hidden"
+              style={{
+                left: '100%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                marginLeft: '20px'
+              }}
+              onMouseEnter={handlePanelEnter}
+              onMouseLeave={handlePanelLeave}
+            >
+              <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
+                <h3 className="font-medium text-sm">API Preview</h3>
+                <button
+                  onClick={() => {
+                    setPreviewAPI(null);
+                    setHoveredAPI(null);
+                  }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <ScrollArea className="h-full max-h-[60vh]">
+                <div className="p-4 space-y-4">
+                  <div>
+                    <h4 className="font-medium text-lg mb-2">{previewAPI.name}</h4>
+                    <p className="text-sm text-muted-foreground mb-4">{previewAPI.description}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Method</label>
+                      <div className="mt-2">
+                        <Badge 
+                          variant={previewAPI.method === 'GET' ? 'default' : previewAPI.method === 'POST' ? 'destructive' : 'secondary'}
+                          className="text-sm px-3 py-1"
+                        >
+                          {previewAPI.method}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Category</label>
+                      <div className="mt-2">
+                        <Badge variant="outline" className="text-sm px-3 py-1">
+                          {previewAPI.category}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Path Template</label>
+                    <div className="mt-2 p-3 bg-muted rounded-lg text-sm font-mono break-all border overflow-x-auto">
+                      <code className="whitespace-pre-wrap">{previewAPI.pathTemplate}</code>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Example URL</label>
+                    <div className="mt-2 p-3 bg-muted rounded-lg text-sm font-mono break-all border overflow-x-auto">
+                      <code className="whitespace-pre-wrap">{generateExampleURL(previewAPI)}</code>
+                    </div>
+                  </div>
+
+                  {previewAPI.parameters && previewAPI.parameters.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Parameters</label>
+                      <div className="mt-2 space-y-2">
+                        {previewAPI.parameters.slice(0, 5).map((param) => (
+                          <div key={param.key} className="flex items-center justify-between p-2 bg-muted/50 rounded text-xs">
+                            <span className="font-medium">{param.key}</span>
+                            <span className="text-muted-foreground">{param.type}</span>
+                          </div>
+                        ))}
+                        {previewAPI.parameters.length > 5 && (
+                          <div className="text-xs text-muted-foreground text-center">
+                            +{previewAPI.parameters.length - 5} more parameters
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <Button 
+                      onClick={() => {
+                        handleAPISelection('source', previewAPI);
+                        setBrowseOpen(false);
+                      }}
+                      className="w-full bg-cricbuzz-500 hover:bg-cricbuzz-600 text-white"
+                    >
+                      Select This API
+                    </Button>
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
