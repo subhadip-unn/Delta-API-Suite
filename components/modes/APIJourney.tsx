@@ -76,21 +76,31 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const handleAPIHover = (api: APIEndpoint) => {
-    // Clear any existing timeout
+    // Clear any existing timeout immediately
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
       setHoverTimeout(null);
     }
+    
+    // Set preview immediately for instant response
     setHoveredAPI(api);
     setPreviewAPI(api);
+    
+    // Debug log to help identify issues
+    console.log('Hovering over API:', api.name, 'Preview set:', !!api);
   };
 
   const handleAPILear = () => {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+    }
+    
     // Add a delay to prevent flickering when moving between elements
     const timeout = setTimeout(() => {
       setHoveredAPI(null);
       setPreviewAPI(null);
-    }, 300); // Increased delay for better reliability
+    }, 150); // Reduced delay for better responsiveness
     setHoverTimeout(timeout);
   };
 
@@ -103,11 +113,16 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   };
 
   const handlePanelLeave = () => {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+    }
+    
     // Add delay when leaving panel to prevent flickering
     const timeout = setTimeout(() => {
       setHoveredAPI(null);
       setPreviewAPI(null);
-    }, 200);
+    }, 100); // Reduced delay for better responsiveness
     setHoverTimeout(timeout);
   };
 
@@ -201,7 +216,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     return `${baseUrl}${path}`;
   };
 
-  // Keyboard navigation handler
+  // Simple keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!browseOpen) return;
     
@@ -231,57 +246,8 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
         }
       }
     }
-    
-    // Arrow key navigation
-    if (key === 'ArrowDown' || key === 'ArrowUp') {
-      e.preventDefault();
-      const currentIndex = getCurrentFocusedIndex();
-      const nextIndex = key === 'ArrowDown' ? currentIndex + 1 : currentIndex - 1;
-      const nextItem = getNextFocusedItem(nextIndex);
-      if (nextItem) {
-        setFocusedItem(nextItem);
-        if (nextItem.type === 'api') {
-          const api = getAPIsByCategory(selectedCategory).find(a => a.id === nextItem.id);
-          if (api) {
-            setPreviewAPI(api);
-            setHoveredAPI(api);
-          }
-        } else {
-          setPreviewAPI(null);
-          setHoveredAPI(null);
-        }
-      }
-    }
   };
 
-  // Get current focused item index
-  const getCurrentFocusedIndex = () => {
-    if (!focusedItem) return -1;
-    
-    if (focusedItem.type === 'category') {
-      return categories.findIndex(cat => cat === focusedItem.id);
-    } else if (focusedItem.type === 'api') {
-      const categoryAPIs = getAPIsByCategory(selectedCategory);
-      return categoryAPIs.findIndex(api => api.id === focusedItem.id);
-    }
-    return -1;
-  };
-
-  // Get next focused item
-  const getNextFocusedItem = (index: number) => {
-    if (selectedCategory) {
-      const categoryAPIs = getAPIsByCategory(selectedCategory);
-      if (index >= 0 && index < categoryAPIs.length) {
-        return { type: 'api' as const, id: categoryAPIs[index].id };
-      }
-    }
-    
-    if (index >= 0 && index < categories.length) {
-      return { type: 'category' as const, id: categories[index] };
-    }
-    
-    return null;
-  };
 
   // Handle parameter change
   const handleParameterChange = (side: 'source' | 'target', key: string, value: string) => {
@@ -486,7 +452,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">↑↓</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-muted/60 rounded text-[10px] font-mono">Tab</kbd>
                   <span>Navigate</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -568,6 +534,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                           } ${
                             focusedItem?.type === 'category' && focusedItem?.id === cat ? 'ring-2 ring-cricbuzz-500 bg-cricbuzz-50 dark:bg-cricbuzz-950/20' : ''
                           }`}
+                          data-category-id={cat}
                         >
                         <div className="flex items-center justify-between">
                           <span className="capitalize truncate">{cat}</span>
@@ -603,8 +570,17 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                               handleAPISelection('source', api);
                               setBrowseOpen(false);
                             }}
-                            onMouseEnter={() => handleAPIHover(api)}
+                            onMouseEnter={(e) => {
+                              e.preventDefault();
+                              handleAPIHover(api);
+                            }}
                             onMouseLeave={handleAPILear}
+                            onMouseOver={() => {
+                              // Backup hover handler in case onMouseEnter fails
+                              if (!previewAPI || previewAPI.id !== api.id) {
+                                handleAPIHover(api);
+                              }
+                            }}
                             onFocus={() => {
                               setPreviewAPI(api);
                               setFocusedItem({ type: 'api', id: api.id });
@@ -612,7 +588,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                             className={`w-full text-left p-3 rounded-lg text-sm hover:bg-muted/60 transition-all duration-200 ${
                               focusedItem?.type === 'api' && focusedItem?.id === api.id ? 'ring-2 ring-cricbuzz-500 bg-cricbuzz-50 dark:bg-cricbuzz-950/20 shadow-sm' : ''
                             }`}
-                            data-api-item
+                            data-api-id={api.id}
                           >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1 pr-2">
