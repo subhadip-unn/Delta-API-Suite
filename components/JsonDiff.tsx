@@ -273,6 +273,7 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
             <TabsContent value="body" className="mt-4">
               <div className="border rounded-lg overflow-hidden">
                 <DiffEditor
+                  key={`body-${source?.url}-${target?.url}-${viewMode}`}
                   height="60vh"
                   language={isBodyText ? 'plaintext' : 'json'}
                   original={sourceContent}
@@ -314,6 +315,7 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
             <TabsContent value="headers" className="mt-4">
               <div className="border rounded-lg overflow-hidden">
                 <DiffEditor
+                  key={`headers-${source?.url}-${target?.url}-${viewMode}`}
                   height="60vh"
                   language={isHeadersText ? 'plaintext' : 'json'}
                   original={sourceContent}

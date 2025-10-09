@@ -95,9 +95,9 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
   };
 
   // Reusable URL Editor Component
-  const URLEditor = ({ url, key, label }: { url: string; key: string; label: string }) => {
-    const displayURL = getDisplayURL(url, key);
-    const isEditing = editingURL === key;
+  const URLEditor = ({ url, urlKey, label }: { url: string; urlKey: string; label: string }) => {
+    const displayURL = getDisplayURL(url, urlKey);
+    const isEditing = editingURL === urlKey;
 
     return (
       <div className="space-y-2">
@@ -114,7 +114,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => handleSaveURL(key)}
+                onClick={() => handleSaveURL(urlKey)}
                 className="h-8 w-8 p-0"
               >
                 <Check className="h-3 w-3" />
@@ -136,7 +136,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => handleEditURL(displayURL, key)}
+                onClick={() => handleEditURL(displayURL, urlKey)}
                 className="h-8 w-8 p-0"
               >
                 <Edit2 className="h-3 w-3" />
@@ -170,6 +170,17 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
       usingCustom: !!customURL
     });
 
+    // Parse body safely
+    let parsedBody = undefined;
+    if (request.body && request.body.trim()) {
+      try {
+        parsedBody = JSON.parse(request.body);
+      } catch (error) {
+        console.error('Invalid JSON in request body:', error);
+        return; // Don't execute if JSON is invalid
+      }
+    }
+
     onAPIExecute(side, {
       method: request.method,
       url: finalURL,
@@ -178,7 +189,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
         'User-Agent': 'Delta-API-Suite/1.0',
         ...request.headers
       },
-      body: request.body ? JSON.parse(request.body) : undefined
+      body: parsedBody
     });
   };
 
@@ -265,7 +276,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <Label className="text-xs">Method</Label>
-                <Select value={sourceRequest.method} onValueChange={(value) => 
+                <Select value={sourceRequest.method || 'GET'} onValueChange={(value) => 
                   setSourceRequest(prev => ({ ...prev, method: value }))
                 }>
                   <SelectTrigger className="mt-1">
@@ -295,7 +306,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Platform</Label>
-                <Select value={sourceRequest.platform} onValueChange={(value) => 
+                <Select value={sourceRequest.platform || '/m/'} onValueChange={(value) => 
                   setSourceRequest(prev => ({ ...prev, platform: value }))
                 }>
                   <SelectTrigger className="mt-1">
@@ -314,7 +325,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
               </div>
               <div>
                 <Label className="text-xs">Version</Label>
-                <Select value={sourceRequest.version} onValueChange={(value) => 
+                <Select value={sourceRequest.version || 'v1'} onValueChange={(value) => 
                   setSourceRequest(prev => ({ ...prev, version: value }))
                 }>
                   <SelectTrigger className="mt-1">
@@ -342,7 +353,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             {/* Preview URL */}
             <URLEditor 
               url={generateURL(sourceRequest)}
-              key="source-request"
+              urlKey="source-request"
               label="Preview URL"
             />
 
@@ -476,7 +487,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <Label className="text-xs">Method</Label>
-                <Select value={targetRequest.method} onValueChange={(value) => 
+                <Select value={targetRequest.method || 'GET'} onValueChange={(value) => 
                   setTargetRequest(prev => ({ ...prev, method: value }))
                 }>
                   <SelectTrigger className="mt-1">
@@ -506,7 +517,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Platform</Label>
-                <Select value={targetRequest.platform} onValueChange={(value) => 
+                <Select value={targetRequest.platform || '/m/'} onValueChange={(value) => 
                   setTargetRequest(prev => ({ ...prev, platform: value }))
                 }>
                   <SelectTrigger className="mt-1">
@@ -525,7 +536,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
               </div>
               <div>
                 <Label className="text-xs">Version</Label>
-                <Select value={targetRequest.version} onValueChange={(value) => 
+                <Select value={targetRequest.version || 'v1'} onValueChange={(value) => 
                   setTargetRequest(prev => ({ ...prev, version: value }))
                 }>
                   <SelectTrigger className="mt-1">
@@ -553,7 +564,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             {/* Preview URL */}
             <URLEditor 
               url={generateURL(targetRequest)}
-              key="target-request"
+              urlKey="target-request"
               label="Preview URL"
             />
 

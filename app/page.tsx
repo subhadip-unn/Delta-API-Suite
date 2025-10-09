@@ -85,32 +85,81 @@ export default function DeltaProPage() {
 
   // Handle API execution
   const handleAPIExecute = async (side: 'source' | 'target', request: any) => {
+    console.log(`🚀 Executing ${side.toUpperCase()} API:`, request);
+    
     setState(prev => ({
       ...prev,
       loading: { ...prev.loading, [side]: true },
       error: { ...prev.error, [side]: null }
     }));
 
+    const startTime = Date.now();
+
     try {
-      const response = await fetch('/api/proxy', {
+      // SOLUTION: Environment-aware CORS proxy bypass
+      const PROXY_URL = process.env.NODE_ENV === 'production'
+        ? (process.env.NEXT_PUBLIC_API_PROXY_URL || 'https://your-proxy.yourdomain.com')
+        : 'http://localhost:3002';
+
+      const proxyResponse = await fetch(`${PROXY_URL}/proxy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request)
+        body: JSON.stringify({
+          url: request.url,
+          method: request.method || 'GET',
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            ...request.headers
+          },
+          body: request.body
+        })
       });
+
+      if (!proxyResponse.ok) {
+        throw new Error(`Proxy error: ${proxyResponse.status}`);
+      }
+
+      const data = await proxyResponse.json();
+      const endTime = Date.now();
+      const durationMs = endTime - startTime;
+
+      const response = {
+        status: data.status,
+        statusText: data.statusText,
+        headers: new Headers(data.headers),
+        text: () => Promise.resolve(typeof data.body === 'string' ? data.body : JSON.stringify(data.body)),
+        json: () => Promise.resolve(data.body),
+        url: data.url,
+        ok: data.status >= 200 && data.status < 300
+      };
+
+      console.log(`📡 ${side.toUpperCase()} Response status:`, response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      
+      // Data is already available from proxy response
+      const finalData = {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        durationMs,
+        size: typeof data.body === 'string' ? data.body.length : JSON.stringify(data.body).length,
+        body: data.body,
+        url: response.url
+      };
+      console.log(`✅ ${side.toUpperCase()} Response data:`, finalData);
+
       setState(prev => ({
         ...prev,
-        [`${side}Response`]: data,
+        [`${side}Response`]: finalData,
         loading: { ...prev.loading, [side]: false }
       }));
 
     } catch (error) {
+      console.error(`❌ ${side.toUpperCase()} Error:`, error);
       setState(prev => ({
         ...prev,
         error: { 

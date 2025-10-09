@@ -164,9 +164,9 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   };
 
   // Reusable URL Editor Component
-  const URLEditor = ({ url, key, label }: { url: string; key: string; label: string }) => {
-    const displayURL = getDisplayURL(url, key);
-    const isEditing = editingURL === key;
+  const URLEditor = ({ url, urlKey, label }: { url: string; urlKey: string; label: string }) => {
+    const displayURL = getDisplayURL(url, urlKey);
+    const isEditing = editingURL === urlKey;
 
     return (
       <div className="space-y-2">
@@ -183,7 +183,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => handleSaveURL(key)}
+                onClick={() => handleSaveURL(urlKey)}
                 className="h-8 w-8 p-0"
               >
                 <Check className="h-3 w-3" />
@@ -205,7 +205,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => handleEditURL(displayURL, key)}
+                onClick={() => handleEditURL(displayURL, urlKey)}
                 className="h-8 w-8 p-0"
               >
                 <Edit2 className="h-3 w-3" />
@@ -850,7 +850,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
             {/* API Selection */}
             <div>
               <Label>Select API</Label>
-              <Select value={sourceAPI?.id} onValueChange={(value) => {
+              <Select value={sourceAPI?.id || ''} onValueChange={(value) => {
                 const api = filteredAPIs.find(a => a.id === value);
                 if (api) handleAPISelection('source', api);
               }}>
@@ -876,7 +876,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">Platform</Label>
-                    <Select value={sourceConfig.platform} onValueChange={(value) => 
+                    <Select value={sourceConfig.platform || 'm'} onValueChange={(value) => 
                       setSourceConfig(prev => ({ ...prev, platform: value }))
                     }>
                       <SelectTrigger className="mt-1 h-10 text-sm">
@@ -893,7 +893,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   </div>
                   <div>
                     <Label className="text-xs">Environment</Label>
-                    <Select value={sourceConfig.environment} onValueChange={(value) => 
+                    <Select value={sourceConfig.environment || 'prod'} onValueChange={(value) => 
                       setSourceConfig(prev => ({ ...prev, environment: value }))
                     }>
                       <SelectTrigger className="mt-1 h-10 text-sm">
@@ -910,7 +910,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   </div>
                   <div>
                     <Label className="text-xs">Version</Label>
-                    <Select value={sourceConfig.version} onValueChange={(value) => 
+                    <Select value={sourceConfig.version || 'v1'} onValueChange={(value) => 
                       setSourceConfig(prev => ({ ...prev, version: value }))
                     }>
                       <SelectTrigger className="mt-1 h-10 text-sm">
@@ -971,7 +971,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   </div>
                   <URLEditor 
                     url={generatePreviewURL(sourceAPI, sourceParams, sourceConfig)}
-                    key={`source-${sourceAPI.id}`}
+                    urlKey={`source-${sourceAPI.id}`}
                     label="Preview URL"
                   />
                 </div>
@@ -1021,7 +1021,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
             {/* API Selection */}
             <div>
               <Label>Select API</Label>
-              <Select value={targetAPI?.id} onValueChange={(value) => {
+              <Select value={targetAPI?.id || ''} onValueChange={(value) => {
                 const api = filteredAPIs.find(a => a.id === value);
                 if (api) handleAPISelection('target', api);
               }}>
@@ -1047,7 +1047,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">Platform</Label>
-                    <Select value={targetConfig.platform} onValueChange={(value) => 
+                    <Select value={targetConfig.platform || 'm'} onValueChange={(value) => 
                       setTargetConfig(prev => ({ ...prev, platform: value }))
                     }>
                       <SelectTrigger className="mt-1">
@@ -1064,7 +1064,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   </div>
                   <div>
                     <Label className="text-xs">Environment</Label>
-                    <Select value={targetConfig.environment} onValueChange={(value) => 
+                    <Select value={targetConfig.environment || 'staging'} onValueChange={(value) => 
                       setTargetConfig(prev => ({ ...prev, environment: value }))
                     }>
                       <SelectTrigger className="mt-1">
@@ -1081,7 +1081,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   </div>
                   <div>
                     <Label className="text-xs">Version</Label>
-                    <Select value={targetConfig.version} onValueChange={(value) => 
+                    <Select value={targetConfig.version || 'v1'} onValueChange={(value) => 
                       setTargetConfig(prev => ({ ...prev, version: value }))
                     }>
                       <SelectTrigger className="mt-1">
@@ -1142,7 +1142,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   </div>
                   <URLEditor 
                     url={generatePreviewURL(targetAPI, targetParams, targetConfig)}
-                    key={`target-${targetAPI.id}`}
+                    urlKey={`target-${targetAPI.id}`}
                     label="Preview URL"
                   />
                 </div>

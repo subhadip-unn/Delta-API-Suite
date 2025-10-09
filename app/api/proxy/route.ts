@@ -96,10 +96,10 @@ async function handleProxyRequest(request: NextRequest, method: string) {
       }
     });
 
-    // Add security headers
+    // Add security headers - match working curl request exactly
     const secureHeaders = {
-      'User-Agent': 'Delta-API-Suite/1.0',
-      'Accept': 'application/json',
+      'User-Agent': 'curl/8.5.0',
+      'Accept': '*/*',
       'X-Forwarded-For': request.ip || 'unknown',
       ...requestHeaders
     };

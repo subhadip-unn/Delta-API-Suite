@@ -14,10 +14,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: {
     template: '%s | Delta API Suite',
-    default: 'Delta API Suite - Professional API Testing & Comparison Tool'
+    default: 'Delta'
   },
   description: 'Professional API testing and comparison tool with advanced semantic analysis, intelligent order-insensitive matching, and world-class diff visualization.',
   keywords: ['API testing', 'API comparison', 'JSON diff', 'API development', 'Cricbuzz', 'DeltaPro'],
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
   authors: [{ name: 'Cricbuzz Team' }],
   creator: 'Cricbuzz',
   publisher: 'Cricbuzz',
