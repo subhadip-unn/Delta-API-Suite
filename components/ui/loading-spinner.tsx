@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
+import { cn } from '@/utils/cn';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
@@ -55,7 +54,7 @@ export function LoadingSpinner({ size = 'md', className, text }: LoadingSpinnerP
   );
 }
 
-export function PulseLoader({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
+export function PulseLoader({ size = 'md' }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
   return (
     <div className="flex items-center space-x-1">
       {[0, 1, 2].map((i) => (

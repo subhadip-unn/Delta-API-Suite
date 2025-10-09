@@ -14,14 +14,14 @@ export async function POST(req: Request) {
     const dataMatch = curlCommand.match(/--data[^'"]*['"]([^'"]+)['"]/i) || 
                      curlCommand.match(/-d\s+['"]([^'"]+)['"]/i);
 
-    const method = methodMatch ? methodMatch[1].toUpperCase() : 'GET';
-    const url = urlMatch ? urlMatch[1] : '';
+    const method = methodMatch?.[1]?.toUpperCase() || 'GET';
+    const url = urlMatch?.[1] || '';
     
     const headers: Record<string, string> = {};
     if (headerMatches) {
       headerMatches.forEach(header => {
         const match = header.match(/-H\s+['"]([^'"]+)['"]/i);
-        if (match) {
+        if (match?.[1]) {
           const [key, value] = match[1].split(':').map(s => s.trim());
           if (key && value) {
             headers[key] = value;
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const body = dataMatch ? dataMatch[1] : undefined;
+    const body = dataMatch?.[1];
 
     return Response.json({
       method,
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       headers,
       body
     });
-  } catch (error) {
+  } catch (_error) {
     return Response.json({ error: 'Failed to parse cURL command' }, { status: 500 });
   }
 }

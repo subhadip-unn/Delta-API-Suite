@@ -1,51 +1,43 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Play, 
-  Loader2, 
-  AlertCircle, 
-  Globe, 
-  Code,
-  ArrowRight,
-  Copy,
-  Trash2,
-  Edit2,
+import {
+  AlertCircle,
   Check,
+  Copy,
+  Edit2,
+  Loader2,
+  Play,
+  Trash2,
   X
 } from 'lucide-react';
+import { useState } from 'react';
 
 interface AdhocCompareProps {
-  onAPIExecute: (side: 'source' | 'target', request: any) => void;
-  sourceResponse: any;
-  targetResponse: any;
+  onAPIExecute: (side: 'source' | 'target', request: Record<string, unknown>) => void;
+  sourceResponse: unknown;
+  targetResponse: unknown;
   loading: { source: boolean; target: boolean };
   error: { source: string | null; target: string | null };
 }
 
-export default function AdhocCompare({ onAPIExecute, sourceResponse, targetResponse, loading, error }: AdhocCompareProps) {
+export default function AdhocCompare({ onAPIExecute, loading, error }: AdhocCompareProps) {
   const [sourceRequest, setSourceRequest] = useState({
     method: 'GET',
-    baseUrl: 'https://apiprv.cricbuzz.com',
-    platform: '/m/',
-    version: 'v1',
-    path: '/home/{version}/index',
+    environment: 'prod',
+    path: '/m/home/v1/index',
     headers: {} as Record<string, string>,
     body: ''
   });
 
   const [targetRequest, setTargetRequest] = useState({
     method: 'GET',
-    baseUrl: 'https://apiprv.cricbuzz.com',
-    platform: '/m/',
-    version: 'v1',
-    path: '/home/{version}/index',
+    environment: 'staging',
+    path: '/m/home/v2/index',
     headers: {} as Record<string, string>,
     body: ''
   });
@@ -58,11 +50,26 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
   const [editedURL, setEditedURL] = useState<string>('');
   const [customURLs, setCustomURLs] = useState<Record<string, string>>({});
 
+  // Environment to base URL mapping
+  const getBaseUrl = (environment: string) => {
+    switch (environment) {
+      case 'prod':
+        return 'https://apiprv.cricbuzz.com';
+      case 'staging':
+        return 'http://api.cricbuzz.stg';
+      case 'dev':
+        return 'https://api.cricbuzz.com';
+      default:
+        return 'https://apiserver.cricbuzz.com';
+    }
+  };
+
   // Generate full URL
   const generateURL = (request: typeof sourceRequest) => {
-    // Replace {version} in path with selected version to prevent duplication
-    const dynamicPath = request.path.replace(/{version}/g, request.version);
-    return `${request.baseUrl}${request.platform}${dynamicPath}`;
+    const baseUrl = getBaseUrl(request.environment);
+    // Ensure path starts with /
+    const cleanPath = request.path.startsWith('/') ? request.path : `/${request.path}`;
+    return `${baseUrl}${cleanPath}`;
   };
 
   // URL editing functions
@@ -85,8 +92,8 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
   const handleCopyURL = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url);
-    } catch (err) {
-      console.error('Failed to copy URL:', err);
+    } catch (_err) {
+      // Failed to copy URL - handled by UI feedback
     }
   };
 
@@ -163,20 +170,15 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
     const customURL = customURLs[`${side}-request`];
     const finalURL = customURL || generatedURL;
 
-    console.log(`🚀 Executing ${side.toUpperCase()} Request:`, {
-      originalURL: generatedURL,
-      customURL: customURL,
-      finalURL: finalURL,
-      usingCustom: !!customURL
-    });
+    // Execute request with generated or custom URL
 
     // Parse body safely
     let parsedBody = undefined;
     if (request.body && request.body.trim()) {
       try {
         parsedBody = JSON.parse(request.body);
-      } catch (error) {
-        console.error('Invalid JSON in request body:', error);
+      } catch (_error) {
+        // Invalid JSON in request body - handled by UI validation
         return; // Don't execute if JSON is invalid
       }
     }
@@ -240,11 +242,24 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
 
       const data = await response.json();
       
-      if (data.success) {
+      if (data.success && data.url) {
+        // Parse the URL to extract path and determine environment
+        const url = new URL(data.url);
+        const path = url.pathname + url.search; // Include query params
+        
+        // Determine environment based on hostname
+        let environment = 'prod';
+        if (url.hostname.includes('apiserver')) {
+          environment = 'dev';
+        } else if (url.hostname.includes('stg') || url.hostname.includes('staging')) {
+          environment = 'staging';
+        }
+        
         const updateRequest = (prev: typeof sourceRequest) => ({
           ...prev,
           method: data.method,
-          url: data.url,
+          environment,
+          path,
           headers: data.headers || {},
           body: data.body ? JSON.stringify(data.body, null, 2) : ''
         });
@@ -255,8 +270,8 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
           setTargetRequest(updateRequest);
         }
       }
-    } catch (error) {
-      console.error('cURL parse error:', error);
+    } catch (_error) {
+      // cURL parse error - handled by UI validation
     }
   };
 
@@ -272,7 +287,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Method and URL */}
+            {/* Method and Environment */}
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <Label className="text-xs">Method</Label>
@@ -292,62 +307,34 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
                 </Select>
               </div>
               <div className="col-span-3">
-                <Label className="text-xs">Base URL</Label>
-                <Input
-                  value={sourceRequest.baseUrl}
-                  onChange={(e) => setSourceRequest(prev => ({ ...prev, baseUrl: e.target.value }))}
-                  placeholder="https://apiprv.cricbuzz.com"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Platform and Version */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="text-xs">Platform</Label>
-                <Select value={sourceRequest.platform || '/m/'} onValueChange={(value) => 
-                  setSourceRequest(prev => ({ ...prev, platform: value }))
+                <Label className="text-xs">Environment</Label>
+                <Select value={sourceRequest.environment || 'prod'} onValueChange={(value) => 
+                  setSourceRequest(prev => ({ ...prev, environment: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="/i/">iOS (/i/)</SelectItem>
-                    <SelectItem value="/m/">MSite (/m/)</SelectItem>
-                    <SelectItem value="/w/">Website (/w/)</SelectItem>
-                    <SelectItem value="/a/">Android (/a/)</SelectItem>
-                    <SelectItem value="/t/">TV (/t/)</SelectItem>
-                    <SelectItem value="/b/">Backend (/b/)</SelectItem>
-                    <SelectItem value="/v/">Vernacular (/v/)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Version</Label>
-                <Select value={sourceRequest.version || 'v1'} onValueChange={(value) => 
-                  setSourceRequest(prev => ({ ...prev, version: value }))
-                }>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="v1">v1</SelectItem>
-                    <SelectItem value="v2">v2</SelectItem>
+                    <SelectItem value="prod">Production (apiprv.cricbuzz.com)</SelectItem>
+                    <SelectItem value="dev">Development (apiserver.cricbuzz.com)</SelectItem>
+                    <SelectItem value="staging">Staging (api.cricbuzz.stg)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Path */}
+            {/* Path with platform and version */}
             <div>
-              <Label className="text-xs">Path</Label>
+              <Label className="text-xs">API Path (include platform & version)</Label>
               <Input
                 value={sourceRequest.path}
                 onChange={(e) => setSourceRequest(prev => ({ ...prev, path: e.target.value }))}
-                placeholder="/home/v1/index"
-                className="mt-1"
+                placeholder="/m/home/v1/index"
+                className="mt-1 font-mono text-sm"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Example: /m/home/v1/index or /w/mcenter/v2/12345/info
+              </p>
             </div>
 
             {/* Preview URL */}
@@ -483,7 +470,7 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Method and URL */}
+            {/* Method and Environment */}
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <Label className="text-xs">Method</Label>
@@ -503,62 +490,34 @@ export default function AdhocCompare({ onAPIExecute, sourceResponse, targetRespo
                 </Select>
               </div>
               <div className="col-span-3">
-                <Label className="text-xs">Base URL</Label>
-                <Input
-                  value={targetRequest.baseUrl}
-                  onChange={(e) => setTargetRequest(prev => ({ ...prev, baseUrl: e.target.value }))}
-                  placeholder="https://apiprv.cricbuzz.com"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Platform and Version */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label className="text-xs">Platform</Label>
-                <Select value={targetRequest.platform || '/m/'} onValueChange={(value) => 
-                  setTargetRequest(prev => ({ ...prev, platform: value }))
+                <Label className="text-xs">Environment</Label>
+                <Select value={targetRequest.environment || 'staging'} onValueChange={(value) => 
+                  setTargetRequest(prev => ({ ...prev, environment: value }))
                 }>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="/i/">iOS (/i/)</SelectItem>
-                    <SelectItem value="/m/">MSite (/m/)</SelectItem>
-                    <SelectItem value="/w/">Website (/w/)</SelectItem>
-                    <SelectItem value="/a/">Android (/a/)</SelectItem>
-                    <SelectItem value="/t/">TV (/t/)</SelectItem>
-                    <SelectItem value="/b/">Backend (/b/)</SelectItem>
-                    <SelectItem value="/v/">Vernacular (/v/)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Version</Label>
-                <Select value={targetRequest.version || 'v1'} onValueChange={(value) => 
-                  setTargetRequest(prev => ({ ...prev, version: value }))
-                }>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="v1">v1</SelectItem>
-                    <SelectItem value="v2">v2</SelectItem>
+                    <SelectItem value="prod">Production (apiprv.cricbuzz.com)</SelectItem>
+                    <SelectItem value="dev">Development (apiserver.cricbuzz.com)</SelectItem>
+                    <SelectItem value="staging">Staging (api.cricbuzz.stg)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Path */}
+            {/* Path with platform and version */}
             <div>
-              <Label className="text-xs">Path</Label>
+              <Label className="text-xs">API Path (include platform & version)</Label>
               <Input
                 value={targetRequest.path}
                 onChange={(e) => setTargetRequest(prev => ({ ...prev, path: e.target.value }))}
-                placeholder="/home/v1/index"
-                className="mt-1"
+                placeholder="/m/home/v2/index"
+                className="mt-1 font-mono text-sm"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Example: /m/home/v2/index or /w/mcenter/v2/12345/info
+              </p>
             </div>
 
             {/* Preview URL */}

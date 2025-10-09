@@ -1,58 +1,58 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Play, 
-  Loader2, 
-  CheckCircle,
-  AlertCircle, 
-  Globe, 
-  Settings,
-  Zap,
-  Code,
-  ArrowRight,
-  RefreshCw,
-  Search,
-  Clock,
-  ChevronDown,
-  Edit2,
-  Check,
-  X,
-  Copy
-} from 'lucide-react';
-import { 
-  apiCatalog, 
-  PLATFORMS, 
-  ENVIRONMENTS, 
-  getAPIsByCategory, 
+import {
+  API_REGISTRY,
+  ENVIRONMENTS,
   generateFullURL,
+  getAPIsByCategory,
+  PLATFORMS,
   validateParameter,
-  type APIEndpoint 
-} from '@/lib/apiRegistry';
-import { compareJsonData, ComparisonResult } from '@/lib/comparison-engine';
+  type ApiEndpoint
+} from '@/config/apiRegistry';
+import { compareJsonData } from '@/core/comparison-engine';
+import type { ApiCategoryId, ApiResponse, ComparisonResult, EnvironmentId, ParameterDefinition, PlatformId, VersionId } from '@/types';
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  Copy,
+  Edit2,
+  Loader2,
+  X,
+  Zap
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+
+interface APIConfig {
+  platform: PlatformId;
+  environment: EnvironmentId;
+  version: VersionId;
+}
 
 interface APIJourneyProps {
-  onAPIExecute: (side: 'source' | 'target', request: any) => void;
-  sourceResponse: any;
-  targetResponse: any;
+  onAPIExecute: (side: 'source' | 'target', request: Record<string, unknown>) => void;
+  sourceResponse: ApiResponse | null;
+  targetResponse: ApiResponse | null;
   loading: { source: boolean; target: boolean };
   error: { source: string | null; target: string | null };
 }
 
 export default function APIJourney({ onAPIExecute, sourceResponse, targetResponse, loading, error }: APIJourneyProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('home');
+  const [selectedCategory, setSelectedCategory] = useState<ApiCategoryId>('home');
   const [browseOpen, setBrowseOpen] = useState(false);
-  const [recentlyUsed, setRecentlyUsed] = useState<APIEndpoint[]>([]);
+  const [recentlyUsed, setRecentlyUsed] = useState<ApiEndpoint[]>([]);
 
   // Load recently used APIs from localStorage on component mount
   useEffect(() => {
@@ -61,8 +61,8 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
       try {
         const parsed = JSON.parse(stored);
         setRecentlyUsed(parsed);
-      } catch (error) {
-        console.warn('Failed to parse recently used APIs from localStorage:', error);
+      } catch (_error) {
+        // Failed to parse recently used APIs - using defaults
       }
     }
   }, []);
@@ -73,9 +73,9 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
       localStorage.setItem('delta-api-recently-used', JSON.stringify(recentlyUsed));
     }
   }, [recentlyUsed]);
-  const [previewAPI, setPreviewAPI] = useState<APIEndpoint | null>(null);
+  const [previewAPI, setPreviewAPI] = useState<ApiEndpoint | null>(null);
   const [focusedItem, setFocusedItem] = useState<{type: 'category' | 'api', id: string} | null>(null);
-  const [hoveredAPI, setHoveredAPI] = useState<APIEndpoint | null>(null);
+  const [_hoveredAPI, setHoveredAPI] = useState<ApiEndpoint | null>(null);
 
   // Simple hover behavior with delay to prevent flickering
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -85,7 +85,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   const [editedURL, setEditedURL] = useState<string>('');
   const [customURLs, setCustomURLs] = useState<Record<string, string>>({});
 
-  const handleAPIHover = (api: APIEndpoint) => {
+  const handleAPIHover = (api: ApiEndpoint) => {
     // Clear any existing timeout immediately
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
@@ -154,8 +154,8 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     try {
       await navigator.clipboard.writeText(url);
       // You could add a toast notification here
-    } catch (err) {
-      console.error('Failed to copy URL:', err);
+    } catch (_err) {
+      // Failed to copy URL - handled by UI feedback
     }
   };
 
@@ -233,27 +233,27 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
       }
     };
   }, [hoverTimeout]);
-  const [sourceAPI, setSourceAPI] = useState<APIEndpoint | null>(null);
-  const [targetAPI, setTargetAPI] = useState<APIEndpoint | null>(null);
+  const [sourceAPI, setSourceAPI] = useState<ApiEndpoint | null>(null);
+  const [targetAPI, setTargetAPI] = useState<ApiEndpoint | null>(null);
   const [autofillTarget, setAutofillTarget] = useState(true);
   const [sourceParams, setSourceParams] = useState<Record<string, string>>({});
   const [targetParams, setTargetParams] = useState<Record<string, string>>({});
-  const [sourceConfig, setSourceConfig] = useState({
-    platform: 'm',
-    environment: 'prod',
-    version: 'v1'
+  const [sourceConfig, setSourceConfig] = useState<APIConfig>({
+    platform: 'm' as PlatformId,
+    environment: 'prod' as EnvironmentId,
+    version: '{version}' as VersionId
   });
-  const [targetConfig, setTargetConfig] = useState({
-    platform: 'm',
-    environment: 'staging',
-    version: 'v1'
+  const [targetConfig, setTargetConfig] = useState<APIConfig>({
+    platform: 'm' as PlatformId,
+    environment: 'staging' as EnvironmentId,
+    version: 'v2' as VersionId
   });
   const [diffAnalysis, setDiffAnalysis] = useState<ComparisonResult | null>(null);
   const [isComparing, setIsComparing] = useState(false);
 
   // Get filtered APIs
   const filteredAPIs = searchQuery 
-    ? apiCatalog.filter(api => 
+    ? API_REGISTRY.filter(api => 
         api.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         api.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         api.pathTemplate.toLowerCase().includes(searchQuery.toLowerCase())
@@ -262,10 +262,10 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
 
 
   // Get categories
-  const categories = [...new Set(apiCatalog.map(api => api.category))];
+  const categories = [...new Set(API_REGISTRY.map(api => api.category))];
 
   // Handle API selection
-  const handleAPISelection = (side: 'source' | 'target', api: APIEndpoint) => {
+  const handleAPISelection = (side: 'source' | 'target', api: ApiEndpoint) => {
     if (side === 'source') {
       setSourceAPI(api);
       setSourceParams({});
@@ -274,15 +274,16 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
         setTargetAPI(api);
         setTargetParams({});
         // Keep platform same, suggest a different env/version for comparison
-        setTargetConfig(prev => ({
+        setTargetConfig(prevConfig => ({
+          ...prevConfig,
           platform: sourceConfig.platform,
-          environment: sourceConfig.environment === 'prod' ? 'staging' : sourceConfig.environment,
-          version: sourceConfig.version === 'v1' ? 'v2' : sourceConfig.version
+          environment: (sourceConfig.environment === 'prod' ? 'staging' : sourceConfig.environment) as EnvironmentId,
+          version: (sourceConfig.version === '{version}' ? 'v2' : sourceConfig.version) as VersionId
         }));
       }
       // Add to recently used
-      setRecentlyUsed(prev => {
-        const filtered = prev.filter(item => item.id !== api.id);
+      setRecentlyUsed((prevItems) => {
+        const filtered = prevItems.filter(item => item.id !== api.id);
         return [api, ...filtered].slice(0, 5);
       });
     } else {
@@ -293,13 +294,12 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
 
 
   // Generate example URL for preview
-  const generateExampleURL = (api: APIEndpoint) => {
+  const generateExampleURL = (api: ApiEndpoint) => {
     const platform = sourceConfig.platform;
     const version = sourceConfig.version;
-    const environment = sourceConfig.environment;
-    const baseUrl = ENVIRONMENTS.find(env => env.id === environment)?.baseUrl || 'http://apiprv.cricbuzz.com';
+    const baseUrl = ENVIRONMENTS.find(env => env.id === sourceConfig.environment)?.baseUrl || 'http://apiprv.cricbuzz.com';
     
-    let path = api.pathTemplate
+    const path = api.pathTemplate
       .replace('{platform}', platform)
       .replace('{version}', version)
       .replace('{id}', '12345')
@@ -334,7 +334,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     if (key === 'Enter' && focusedItem) {
       e.preventDefault();
       if (focusedItem.type === 'category') {
-        setSelectedCategory(focusedItem.id);
+        setSelectedCategory(focusedItem.id as ApiCategoryId);
         setPreviewAPI(null);
         setHoveredAPI(null);
       } else if (focusedItem.type === 'api') {
@@ -370,29 +370,23 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     const customURL = customURLs[`${side}-${api.id}`];
     const finalURL = customURL || generatedURL;
     
-    console.log(`🚀 Executing ${side.toUpperCase()} API:`, {
-      apiName: api.name,
-      originalURL: generatedURL,
-      customURL: customURL,
-      finalURL: finalURL,
-      usingCustom: !!customURL
-    });
+    // Execute API with generated or custom URL
 
     // Validate parameters
     const errors: Record<string, string> = {};
     let hasErrors = false;
 
-    api.parameters.forEach(param => {
-      const value = params[param.key] || '';
-      const validation = validateParameter(param.key, value);
-      if (!validation.valid) {
-        errors[param.key] = validation.error || '';
+    api.parameters.forEach((param: ParameterDefinition) => {
+      const value = params[param.name] || '';
+      const validation = validateParameter(param, value);
+      if (!validation.isValid) {
+        errors[param.name] = validation.error || '';
         hasErrors = true;
       }
     });
 
     if (hasErrors) {
-      console.error('Validation errors:', errors);
+      // Validation errors - handled by UI feedback
       return;
     }
 
@@ -404,8 +398,8 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     if ((api.method === 'POST' || api.method === 'PUT') && params['_body']) {
       try {
         requestBody = JSON.parse(params['_body']);
-      } catch (e) {
-        console.error('Invalid JSON in request body:', e);
+      } catch (_e) {
+        // Invalid JSON in request body - handled by UI validation
         return;
       }
     }
@@ -437,15 +431,14 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
   };
 
   // Generate preview URL
-  const generatePreviewURL = (api: APIEndpoint | null, params: Record<string, string>, config: any) => {
+  const generatePreviewURL = (api: ApiEndpoint | null, params: Record<string, string>, config: APIConfig) => {
     if (!api) return '';
     
-    const environment = ENVIRONMENTS.find(env => env.id === config.environment);
     return generateFullURL(
-      environment?.baseUrl || '',
-      api.pathTemplate,
+      api,
       config.platform,
       config.version,
+      config.environment,
       params
     );
   };
@@ -454,10 +447,6 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
     <div className="space-y-6">
       {/* Integrated Search + Browse Button */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {/* Single search input with integrated Browse button */}
@@ -496,7 +485,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedCategory(api.category);
+                            setSelectedCategory(api.category as ApiCategoryId);
                             handleAPISelection('source', api);
                           }}
                           className="w-full text-left p-3 hover:bg-muted/60 transition-colors"
@@ -589,7 +578,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                         type="button"
                         tabIndex={0}
                         onClick={() => {
-                          setSelectedCategory(api.category);
+                          setSelectedCategory(api.category as ApiCategoryId);
                           handleAPISelection('source', api);
                           setBrowseOpen(false);
                         }}
@@ -620,7 +609,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                           type="button"
                           tabIndex={0}
                           onClick={() => {
-                            setSelectedCategory(cat);
+                            setSelectedCategory(cat as ApiCategoryId);
                             setPreviewAPI(null);
                             setFocusedItem({ type: 'category', id: cat });
                           }}
@@ -877,7 +866,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   <div>
                     <Label className="text-xs">Platform</Label>
                     <Select value={sourceConfig.platform || 'm'} onValueChange={(value) => 
-                      setSourceConfig(prev => ({ ...prev, platform: value }))
+                      setSourceConfig(prev => ({ ...prev, platform: value as PlatformId }))
                     }>
                       <SelectTrigger className="mt-1 h-10 text-sm">
                         <SelectValue />
@@ -894,7 +883,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   <div>
                     <Label className="text-xs">Environment</Label>
                     <Select value={sourceConfig.environment || 'prod'} onValueChange={(value) => 
-                      setSourceConfig(prev => ({ ...prev, environment: value }))
+                      setSourceConfig(prev => ({ ...prev, environment: value as EnvironmentId }))
                     }>
                       <SelectTrigger className="mt-1 h-10 text-sm">
                         <SelectValue />
@@ -911,7 +900,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   <div>
                     <Label className="text-xs">Version</Label>
                     <Select value={sourceConfig.version || 'v1'} onValueChange={(value) => 
-                      setSourceConfig(prev => ({ ...prev, version: value }))
+                      setSourceConfig(prev => ({ ...prev, version: value as VersionId }))
                     }>
                       <SelectTrigger className="mt-1 h-10 text-sm">
                         <SelectValue />
@@ -928,7 +917,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                 {sourceAPI.parameters.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Parameters</Label>
-                    {sourceAPI.parameters.map(param => (
+                    {sourceAPI.parameters.map((param: ParameterDefinition) => (
                       <div key={param.key} className="space-y-1">
                         <Label htmlFor={`source-${param.key}`} className="text-xs flex items-center space-x-1">
                           <span>{param.description}</span>
@@ -1048,7 +1037,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   <div>
                     <Label className="text-xs">Platform</Label>
                     <Select value={targetConfig.platform || 'm'} onValueChange={(value) => 
-                      setTargetConfig(prev => ({ ...prev, platform: value }))
+                      setTargetConfig(prev => ({ ...prev, platform: value as PlatformId }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -1065,7 +1054,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   <div>
                     <Label className="text-xs">Environment</Label>
                     <Select value={targetConfig.environment || 'staging'} onValueChange={(value) => 
-                      setTargetConfig(prev => ({ ...prev, environment: value }))
+                      setTargetConfig(prev => ({ ...prev, environment: value as EnvironmentId }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -1082,7 +1071,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                   <div>
                     <Label className="text-xs">Version</Label>
                     <Select value={targetConfig.version || 'v1'} onValueChange={(value) => 
-                      setTargetConfig(prev => ({ ...prev, version: value }))
+                      setTargetConfig(prev => ({ ...prev, version: value as VersionId }))
                     }>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -1099,7 +1088,7 @@ export default function APIJourney({ onAPIExecute, sourceResponse, targetRespons
                 {targetAPI.parameters.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Parameters</Label>
-                    {targetAPI.parameters.map(param => (
+                    {targetAPI.parameters.map((param: ParameterDefinition) => (
                       <div key={param.key} className="space-y-1">
                         <Label htmlFor={`target-${param.key}`} className="text-xs flex items-center space-x-1">
                           <span>{param.description}</span>

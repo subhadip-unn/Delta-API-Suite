@@ -1,26 +1,11 @@
-// Advanced Comparison Engine - Migrated from React project
-// This is the core comparison logic that makes our product world-class
+/**
+ * 🎯 DELTA API SUITE - COMPARISON ENGINE
+ * 
+ * Advanced comparison engine for intelligent JSON diff analysis
+ * Professional, maintainable, and world-class comparison logic
+ */
 
-export interface DiffItem {
-  path: string;
-  type: 'missing' | 'extra' | 'changed' | 'type-changed';
-  oldValue?: any;
-  newValue?: any;
-  description: string;
-}
-
-export interface ComparisonResult {
-  identical: boolean;
-  differences: DiffItem[];
-  summary: {
-    totalFields: number;
-    identicalFields: number;
-    differentFields: number;
-    missingFields: number;
-    extraFields: number;
-  };
-}
-
+import type { ComparisonResult, DiffItem } from '@/types';
 
 // Advanced similarity matching for intelligent array comparison
 const findBestMatch = (itemA: any, arrayB: any[], usedIndices: Set<number>): { match: any, index: number, similarity: number } | null => {
@@ -99,23 +84,34 @@ const calculateSimilarity = (a: any, b: any): number => {
 
 // Levenshtein distance calculation
 const levenshteinDistance = (str1: string, str2: string): number => {
-  const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+  const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(0));
   
-  for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-  for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+  for (let i = 0; i <= str1.length; i++) {
+    const row = matrix[0];
+    if (row) row[i] = i;
+  }
+  for (let j = 0; j <= str2.length; j++) {
+    const row = matrix[j];
+    if (row) row[0] = j;
+  }
   
   for (let j = 1; j <= str2.length; j++) {
     for (let i = 1; i <= str1.length; i++) {
       const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[j][i] = Math.min(
-        matrix[j][i - 1] + 1,     // deletion
-        matrix[j - 1][i] + 1,     // insertion
-        matrix[j - 1][i - 1] + indicator // substitution
-      );
+      const currentRow = matrix[j];
+      const prevRow = matrix[j - 1];
+      
+      if (currentRow && prevRow) {
+        currentRow[i] = Math.min(
+          (currentRow[i - 1] ?? 0) + 1,     // deletion
+          (prevRow[i] ?? 0) + 1,     // insertion
+          (prevRow[i - 1] ?? 0) + indicator // substitution
+        );
+      }
     }
   }
   
-  return matrix[str2.length][str1.length];
+  return matrix[str2.length]?.[str1.length] ?? 0;
 };
 
 // Count fields in an object for statistics
@@ -126,7 +122,13 @@ const countFields = (obj: any): number => {
   return Object.keys(obj).reduce((sum, key) => sum + countFields(obj[key]), 0);
 };
 
-// Main comparison function - the heart of our product
+/**
+ * Main comparison function - the heart of our product
+ * @param obj1 - Source object to compare
+ * @param obj2 - Target object to compare
+ * @param isOrderSensitive - Whether to use order-sensitive array comparison
+ * @returns Detailed comparison result with differences and statistics
+ */
 export const compareJsonData = (obj1: any, obj2: any, isOrderSensitive: boolean = false): ComparisonResult => {
   const differences: DiffItem[] = [];
   
@@ -275,14 +277,19 @@ export const compareJsonData = (obj1: any, obj2: any, isOrderSensitive: boolean 
   const identicalFields = Math.max(0, totalFields - differences.length);
 
   return {
+    isMatch: differences.length === 0,
     identical: differences.length === 0,
     differences,
     summary: {
+      totalDifferences: differences.length,
       totalFields,
       identicalFields,
       differentFields,
       missingFields,
-      extraFields
+      extraFields,
+      added: extraFields,
+      removed: missingFields,
+      modified: differentFields
     }
   };
 };

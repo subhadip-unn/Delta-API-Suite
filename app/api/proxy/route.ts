@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { API_TIMEOUT } from '@/config/constants';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -100,13 +102,13 @@ async function handleProxyRequest(request: NextRequest, method: string) {
     const secureHeaders = {
       'User-Agent': 'curl/8.5.0',
       'Accept': '*/*',
-      'X-Forwarded-For': request.ip || 'unknown',
+      'X-Forwarded-For': request.headers.get('x-forwarded-for') || 'unknown',
       ...requestHeaders
     };
 
     // Make the request with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
     const response = await fetch(targetUrl, {
       method: method,
@@ -124,7 +126,7 @@ async function handleProxyRequest(request: NextRequest, method: string) {
     const responseText = await response.text();
     
     // Try to parse as JSON
-    let parsedBody: any = responseText;
+    let parsedBody: unknown = responseText;
     try {
       parsedBody = JSON.parse(responseText);
     } catch {
@@ -166,16 +168,16 @@ async function handleProxyRequest(request: NextRequest, method: string) {
       headers: corsHeaders,
     });
 
-  } catch (error) {
-    console.error(`Proxy ${method} error:`, error);
+  } catch (_error) {
+    // Proxy error - logged for debugging
     
-    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    const isTimeout = _error instanceof Error && _error.name === 'AbortError';
     const errorMessage = isTimeout ? 'Request timeout' : 'Failed to make request';
     
     return NextResponse.json(
       { 
         error: errorMessage,
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: _error instanceof Error ? _error.message : 'Unknown error',
         status: isTimeout ? 408 : 500,
         headers: {},
         durationMs: 0,

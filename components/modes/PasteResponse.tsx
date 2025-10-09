@@ -1,23 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { 
-  FileText, 
-  Copy, 
-  Download,
-  CheckCircle,
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GuidedTour } from '@/components/ui/guided-tour';
+import { Label } from '@/components/ui/label';
+import type { ApiResponse } from '@/types';
+import {
   AlertCircle,
+  CheckCircle,
+  Copy,
+  Download,
+  FileText,
   RefreshCw
 } from 'lucide-react';
+import { useState } from 'react';
 
 interface PasteResponseProps {
-  onResponsePaste: (side: 'source' | 'target', response: any) => void;
-  sourceResponse: any;
-  targetResponse: any;
+  onResponsePaste: (side: 'source' | 'target', response: ApiResponse) => void;
+  sourceResponse: ApiResponse | null;
+  targetResponse: ApiResponse | null;
 }
 
 export default function PasteResponse({ onResponsePaste, sourceResponse, targetResponse }: PasteResponseProps) {
@@ -25,21 +27,22 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
   const [targetText, setTargetText] = useState('');
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
+  const [showTour, setShowTour] = useState(false);
 
   // Parse JSON text
   const parseJSON = (text: string) => {
     try {
       return JSON.parse(text);
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   };
 
   // Format JSON
-  const formatJSON = (obj: any) => {
+  const formatJSON = (obj: unknown) => {
     try {
       return JSON.stringify(obj, null, 2);
-    } catch (error) {
+    } catch (_error) {
       return String(obj);
     }
   };
@@ -102,8 +105,8 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-    } catch (error) {
-      console.error('Failed to copy:', error);
+    } catch (_error) {
+      // Failed to copy - handled by UI feedback
     }
   };
 
@@ -118,6 +121,10 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleTourComplete = () => {
+    setShowTour(false);
   };
 
   return (
@@ -290,19 +297,32 @@ export default function PasteResponse({ onResponsePaste, sourceResponse, targetR
         </Card>
       </div>
 
-      {/* Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>• Paste JSON responses directly into the text areas above</p>
-          <p>• The tool will automatically validate JSON format</p>
-          <p>• Use the "Use as Response" buttons to set the responses for comparison</p>
-          <p>• You can copy or download the pasted content using the action buttons</p>
-          <p>• Invalid JSON will show an error message</p>
+      {/* Modern Help Section */}
+      <Card className="border-dashed border-2 border-muted">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="p-3 rounded-full bg-primary/10">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Ready to Compare?</h3>
+              <p className="text-muted-foreground">
+                Paste your JSON responses above and click "Use as Response" to start comparing
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Guided Tour Modal */}
+      {showTour && (
+        <GuidedTour
+          onComplete={handleTourComplete}
+          onSkip={handleTourComplete}
+        />
+      )}
     </div>
   );
 }

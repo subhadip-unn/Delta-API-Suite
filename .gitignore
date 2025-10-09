@@ -1,5 +1,31 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+.turbo/
+.vercel/
+.swc/
+
+# Environment variables
+.env
+.env*.local
+.env.production
+.env.development
+
 # Logs
-logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,34 +33,73 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependencies
-node_modules
-.pnpm-store
-package-lock.json
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# Build outputs
-dist
-dist-ssr
-*.local
-build
-out
+# Coverage directory
+coverage/
+*.lcov
+.nyc_output/
 
-# Next.js
-.next/
-.vercel
-tsconfig.tsbuildinfo
+# Caches
+.cache/
+.parcel-cache/
+.npm
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# Temporary folders
+tmp/
+temp/
 
 # Editor directories and files
 .vscode/*
-!.vscode/extensions.json
 !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.vscode-test
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Testing
-coverage
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local development
+.local
+*.local
+
+# Misc
+*.tgz
+*.tar.gz
+
+# TypeScript
+next-env.d.ts
+
+# PWA files
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+**/public/sw.js.map
+**/public/workbox-*.js.map
+**/public/worker-*.js.map
+
+# Sentry Config File
+.sentryclirc
+
+# Bundle analyzer
+analyze/

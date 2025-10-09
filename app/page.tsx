@@ -1,50 +1,58 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { CricbuzzLogo, DeltaLogo } from '@/components/delta-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { DeltaLogo, CricbuzzLogo } from '@/components/delta-logo';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlobalTour } from '@/components/ui/global-tour';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import dynamic from 'next/dynamic';
-import { 
-  Globe, 
-  FileText, 
-  Play, 
-  Loader2, 
-  CheckCircle, 
-  AlertCircle, 
-  ArrowRight, 
-  RefreshCw,
+import { ModeTips } from '@/components/ui/mode-tips';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TourProvider, useTour } from '@/contexts/tour-context';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  BarChart3,
+  CheckCircle,
   Code,
-  Settings,
-  BarChart3
+  FileText,
+  Globe,
+  Lightbulb,
+  RefreshCw,
+  Settings
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 // Dynamic imports to avoid SSR issues
-const JsonDiff = React.lazy(() => import('@/components/JsonDiff'));
-const APIJourney = React.lazy(() => import('@/components/modes/APIJourney'));
-const AdhocCompare = React.lazy(() => import('@/components/modes/AdhocCompare'));
-const PasteResponse = React.lazy(() => import('@/components/modes/PasteResponse'));
-// Removed Swagger and Universal modules
+import dynamic from 'next/dynamic';
 
-// Response interface
-interface APIResponse {
-  status: number;
-  statusText: string;
-  headers: Record<string, string>;
-  durationMs: number;
-  size: number;
-  body: any;
-  url: string;
-}
+const JsonDiff = dynamic(() => import('@/components/JsonDiff'), {
+  ssr: false,
+  loading: () => <LoadingSpinner />
+});
+
+const APIJourney = dynamic(() => import('@/components/modes/APIJourney'), {
+  ssr: false,
+  loading: () => <LoadingSpinner />
+});
+
+const AdhocCompare = dynamic(() => import('@/components/modes/AdhocCompare'), {
+  ssr: false,
+  loading: () => <LoadingSpinner />
+});
+
+const PasteResponse = dynamic(() => import('@/components/modes/PasteResponse'), {
+  ssr: false,
+  loading: () => <LoadingSpinner />
+});
+
+// Import shared types
+import type { ApiResponse } from '@/types';
 
 // Main component state
 interface DeltaProState {
-  sourceResponse: APIResponse | null;
-  targetResponse: APIResponse | null;
+  sourceResponse: ApiResponse | null;
+  targetResponse: ApiResponse | null;
   loading: {
     source: boolean;
     target: boolean;
@@ -56,7 +64,8 @@ interface DeltaProState {
   activeMode: 'api-explorer' | 'api-builder' | 'response-comparison';
 }
 
-export default function DeltaProPage() {
+function DeltaProContent() {
+  const { setShowGlobalTour } = useTour();
   const [state, setState] = useState<DeltaProState>({
     sourceResponse: null,
     targetResponse: null,
@@ -72,8 +81,8 @@ export default function DeltaProPage() {
       try {
         const parsed = JSON.parse(savedState);
         setState(prev => ({ ...prev, ...parsed }));
-      } catch (error) {
-        console.error('Failed to load saved state:', error);
+      } catch (_error) {
+        // Failed to load saved state - using defaults
       }
     }
   }, []);
@@ -84,8 +93,8 @@ export default function DeltaProPage() {
   }, [state]);
 
   // Handle API execution
-  const handleAPIExecute = async (side: 'source' | 'target', request: any) => {
-    console.log(`🚀 Executing ${side.toUpperCase()} API:`, request);
+  const handleAPIExecute = async (side: 'source' | 'target', request: Record<string, unknown>) => {
+    // Execute API request
     
     setState(prev => ({
       ...prev,
@@ -110,7 +119,7 @@ export default function DeltaProPage() {
           headers: {
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en-US,en;q=0.9',
-            ...request.headers
+            ...(request.headers as Record<string, string>)
           },
           body: request.body
         })
@@ -134,7 +143,7 @@ export default function DeltaProPage() {
         ok: data.status >= 200 && data.status < 300
       };
 
-      console.log(`📡 ${side.toUpperCase()} Response status:`, response.status);
+      // Response received successfully
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -150,7 +159,7 @@ export default function DeltaProPage() {
         body: data.body,
         url: response.url
       };
-      console.log(`✅ ${side.toUpperCase()} Response data:`, finalData);
+      // Response data processed successfully
 
       setState(prev => ({
         ...prev,
@@ -158,13 +167,13 @@ export default function DeltaProPage() {
         loading: { ...prev.loading, [side]: false }
       }));
 
-    } catch (error) {
-      console.error(`❌ ${side.toUpperCase()} Error:`, error);
+    } catch (_error) {
+      // Handle API execution error
       setState(prev => ({
         ...prev,
         error: { 
           ...prev.error, 
-          [side]: error instanceof Error ? error.message : 'Unknown error' 
+          [side]: _error instanceof Error ? _error.message : 'Unknown error' 
         },
         loading: { ...prev.loading, [side]: false }
       }));
@@ -172,7 +181,7 @@ export default function DeltaProPage() {
   };
 
   // Handle response paste
-  const handleResponsePaste = (side: 'source' | 'target', response: APIResponse) => {
+  const handleResponsePaste = (side: 'source' | 'target', response: ApiResponse) => {
     setState(prev => ({
       ...prev,
       [`${side}Response`]: response
@@ -213,20 +222,16 @@ export default function DeltaProPage() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Badge variant="secondary" className="text-xs">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Real-time
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  <Globe className="w-3 h-3 mr-1" />
-                  CORS-free
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  <BarChart3 className="w-3 h-3 mr-1" />
-                  Analytics
-                </Badge>
-              </div>
+              <ModeTips mode={state.activeMode} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowGlobalTour(true)}
+                className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <Lightbulb className="w-4 h-4 mr-2" />
+                Show Me How
+              </Button>
               <ThemeToggle />
             </div>
           </div>
@@ -262,7 +267,7 @@ export default function DeltaProPage() {
                 value={state.activeMode} 
                 onValueChange={(value) => setState(prev => ({ 
                   ...prev, 
-                  activeMode: value as any 
+                  activeMode: value as 'api-explorer' | 'api-builder' | 'response-comparison'
                 }))}
                 className="w-full"
               >
@@ -499,6 +504,17 @@ export default function DeltaProPage() {
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* Global Tour */}
+      <GlobalTour />
     </div>
+  );
+}
+
+export default function DeltaProPage() {
+  return (
+    <TourProvider>
+      <DeltaProContent />
+    </TourProvider>
   );
 }

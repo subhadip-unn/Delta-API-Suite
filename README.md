@@ -64,7 +64,10 @@
 │   ├── modes/            # Feature-specific components
 │   ├── delta-logo.tsx    # Custom logo components
 │   └── theme-provider.tsx # Theme management
-├── lib/                   # Utility functions
+├── config/                # Configuration & constants
+├── core/                  # Business logic
+├── utils/                 # Utility functions
+├── types/                 # TypeScript definitions
 │   ├── api-library.ts    # API configuration
 │   ├── comparison-engine.ts # Core comparison logic
 │   └── utils.ts          # Helper functions

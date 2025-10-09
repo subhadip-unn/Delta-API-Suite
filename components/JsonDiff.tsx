@@ -1,37 +1,27 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { DiffEditor } from '@monaco-editor/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Copy, 
-  Download, 
-  Eye, 
-  EyeOff, 
-  Code, 
-  FileText,
+import { compareJsonData } from '@/core/comparison-engine';
+import type { ApiResponse, ComparisonResult, DiffItem } from '@/types';
+import { DiffEditor } from '@monaco-editor/react';
+import {
+  AlertCircle,
   ArrowRight,
   CheckCircle,
-  AlertCircle
+  Code,
+  Copy,
+  Eye,
+  EyeOff,
+  FileText
 } from 'lucide-react';
-import { compareJsonData, ComparisonResult, DiffItem } from '@/lib/comparison-engine';
-
-interface APIResponse {
-  status: number;
-  statusText: string;
-  headers: Record<string, string>;
-  durationMs: number;
-  size: number;
-  body: any;
-  url: string;
-}
+import { useState } from 'react';
 
 interface JsonDiffProps {
-  source: APIResponse | null;
-  target: APIResponse | null;
+  source: ApiResponse | null;
+  target: ApiResponse | null;
 }
 
 export default function JsonDiff({ source, target }: JsonDiffProps) {
@@ -42,7 +32,7 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
   const [orderSensitive, setOrderSensitive] = useState(false);
 
   // Format response data
-  const formatResponse = (response: APIResponse | null, mode: 'body' | 'headers') => {
+  const formatResponse = (response: ApiResponse | null, mode: 'body' | 'headers') => {
     if (!response) return '';
     
     if (mode === 'headers') {
@@ -71,14 +61,19 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
     // If either side is a string (invalid JSON fallback), skip structural compare
     const result = (typeof sourceData === 'string' || typeof targetData === 'string')
       ? {
+          isMatch: sourceContent === targetContent,
           identical: sourceContent === targetContent,
           differences: [],
           summary: {
+            totalDifferences: 0,
             totalFields: 0,
             identicalFields: 0,
             differentFields: 0,
             missingFields: 0,
-            extraFields: 0
+            extraFields: 0,
+            added: 0,
+            removed: 0,
+            modified: 0
           }
         }
       : compareJsonData(sourceData, targetData, orderSensitive);
@@ -127,29 +122,29 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
   const sourceContent = formatResponse(source, viewMode);
   const targetContent = formatResponse(target, viewMode);
   const isBodyText = typeof (source?.body) === 'string' || typeof (target?.body) === 'string';
-  const isHeadersText = typeof (source?.headers as any) === 'string' || typeof (target?.headers as any) === 'string';
+  const isHeadersText = typeof (source?.headers as unknown) === 'string' || typeof (target?.headers as unknown) === 'string';
 
   // Copy to clipboard
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-    } catch (error) {
-      console.error('Failed to copy:', error);
+    } catch (_error) {
+      // Failed to copy - handled by UI feedback
     }
   };
 
-  // Download as file
-  const downloadAsFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  // Download as file - reserved for future use
+  // const downloadAsFile = (content: string, filename: string) => {
+  //   const blob = new Blob([content], { type: 'application/json' });
+  //   const url = URL.createObjectURL(blob);
+  //   const a = document.createElement('a');
+  //   a.href = url;
+  //   a.download = filename;
+  //   document.body.appendChild(a);
+  //   a.click();
+  //   document.body.removeChild(a);
+  //   URL.revokeObjectURL(url);
+  // };
 
   // Get status color
   const getStatusColor = (status: number) => {
@@ -254,7 +249,7 @@ export default function JsonDiff({ source, target }: JsonDiffProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as any)}>
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'body' | 'headers')}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="body" className="flex items-center space-x-2">
                 <Code className="w-4 h-4" />

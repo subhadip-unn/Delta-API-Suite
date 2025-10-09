@@ -1,39 +1,14 @@
 /**
- * 🚀 DELTA API LIBRARY - Unified Dynamic API Configuration
+ * 🚀 DELTA API LIBRARY - API ENDPOINT DEFINITIONS
  * 
- * Features:
- * - Dynamic platform selection: /m/, /w/, /i/, /a/, /b/, /v/, /t/
- * - Dynamic version selection: {version}, v2, etc.
- * - Unified structure - no duplicates
- * - Professional, maintainable, scalable
+ * Clean separation of API endpoint constants
+ * Professional structure for maintainability
  */
 
-// 🌐 PLATFORM CONFIGURATION
-export const PLATFORMS = [
-  { id: 'm', name: 'MSite', prefix: '/m/', description: 'Mobile Website' },
-  { id: 'w', name: 'Website', prefix: '/w/', description: 'Desktop Website' },
-  { id: 'i', name: 'iOS', prefix: '/i/', description: 'iOS App' },
-  { id: 'a', name: 'Android', prefix: '/a/', description: 'Android App' },
-  { id: 'b', name: 'Backend', prefix: '/b/', description: 'Backend Services' },
-  { id: 'v', name: 'Vernacular', prefix: '/v/', description: 'Vernacular Languages' },
-  { id: 't', name: 'TV', prefix: '/t/', description: 'TV Platform' }
-] as const;
+import type { ApiLibrary } from '@/types';
 
-// 📊 VERSION CONFIGURATION
-export const VERSIONS = [
-  { id: '{version}', name: 'Version 1', description: 'Stable API' },
-  { id: 'v2', name: 'Version 2', description: 'Latest API' }
-] as const;
-
-// 🌍 ENVIRONMENT CONFIGURATION
-export const ENVIRONMENTS = [
-  { id: 'prod', name: 'Production', baseUrl: 'http://apiprv.cricbuzz.com' },
-  { id: 'staging', name: 'Staging', baseUrl: 'http://api-staging.cricbuzz.com' },
-  { id: 'dev', name: 'Development', baseUrl: 'http://api-dev.cricbuzz.com' }
-] as const;
-
-// 🎯 UNIFIED API LIBRARY
-export const apiLibrary = {
+// 🎯 UNIFIED API LIBRARY - PURE CONSTANTS
+export const apiLibrary: ApiLibrary = {
   // 🏠 HOME & DASHBOARD
   home: {
     index: "/{platform}/home/{version}/index",
@@ -381,66 +356,9 @@ export const apiLibrary = {
   },
 
   // 🌐 DOMAIN & EXTERNAL
-  cricbuzzDomain: "https://www.cricbuzz.com/",
-  haveYourSayLink: "/{platform}/admin/{version}/userFeedback/upsert",
-  tveSession: "/{platform}/iam/{version}/tve/session/tv/{code}"
+  external: {
+    cricbuzzDomain: "https://www.cricbuzz.com/",
+    haveYourSayLink: "/{platform}/admin/{version}/userFeedback/upsert",
+    tveSession: "/{platform}/iam/{version}/tve/session/tv/{code}"
+  }
 };
-
-// 🛠️ UTILITY FUNCTIONS
-export const generateApiUrl = (
-  apiPath: string,
-  platform: string = 'm',
-  version: string = '{version}',
-  parameters: Record<string, string> = {}
-): string => {
-  let url = apiPath
-    .replace(/{platform}/g, platform)
-    .replace(/{version}/g, version);
-  
-  // Replace parameters
-  Object.entries(parameters).forEach(([key, value]) => {
-    url = url.replace(`{${key}}`, value);
-  });
-  
-  return url;
-};
-
-export const getBaseUrl = (environment: string = 'prod'): string => {
-  const env = ENVIRONMENTS.find(e => e.id === environment);
-  return env?.baseUrl || ENVIRONMENTS[0].baseUrl;
-};
-
-export const getFullApiUrl = (
-  apiPath: string,
-  platform: string = 'm',
-  version: string = '{version}',
-  environment: string = 'prod',
-  parameters: Record<string, string> = {}
-): string => {
-  const baseUrl = getBaseUrl(environment);
-  const apiUrl = generateApiUrl(apiPath, platform, version, parameters);
-  return `${baseUrl}${apiUrl}`;
-};
-
-// 📊 API CATEGORIES FOR UI
-export const API_CATEGORIES = [
-  { id: 'home', name: 'Home & Dashboard', icon: '🏠' },
-  { id: 'match', name: 'Match Center', icon: '🏏' },
-  { id: 'news', name: 'News & Content', icon: '📰' },
-  { id: 'videos', name: 'Videos & Media', icon: '🎥' },
-  { id: 'teams', name: 'Teams & Players', icon: '🏆' },
-  { id: 'series', name: 'Series & Venues', icon: '🏟️' },
-  { id: 'stats', name: 'Statistics', icon: '📊' },
-  { id: 'schedule', name: 'Schedule', icon: '📅' },
-  { id: 'authentication', name: 'Authentication', icon: '🔐' },
-  { id: 'cbplus', name: 'CB Plus Premium', icon: '💎' },
-  { id: 'iplAuction', name: 'IPL Auction', icon: '🏆' },
-  { id: 'search', name: 'Search & Discovery', icon: '🔍' },
-  { id: 'quiz', name: 'Quiz & Interactive', icon: '🎯' },
-  { id: 'special', name: 'Special Content', icon: '🎪' }
-] as const;
-
-export type PlatformId = typeof PLATFORMS[number]['id'];
-export type VersionId = typeof VERSIONS[number]['id'];
-export type EnvironmentId = typeof ENVIRONMENTS[number]['id'];
-export type ApiCategoryId = typeof API_CATEGORIES[number]['id'];
