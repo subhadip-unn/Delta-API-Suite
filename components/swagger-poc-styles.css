@@ -1,0 +1,317 @@
+/* Swagger POC Custom Styles - Fixed for your dark theme */
+
+.swagger-poc-container {
+  /* Isolate Swagger UI styles */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix overlapping with performance metrics */
+.swagger-poc-container .swagger-ui {
+  font-family: inherit;
+  line-height: 1.5;
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Fix header and info section */
+.swagger-poc-container .swagger-ui .info {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  padding: 20px !important;
+  margin: 0 !important;
+}
+
+.swagger-poc-container .swagger-ui .info .title {
+  color: #ffffff !important;
+  font-size: 2rem !important;
+  margin-bottom: 10px !important;
+}
+
+.swagger-poc-container .swagger-ui .info .description {
+  color: #cccccc !important;
+}
+
+/* Fix server selection */
+.swagger-poc-container .swagger-ui .servers {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  padding: 15px 20px !important;
+  border-bottom: 1px solid #333 !important;
+}
+
+.swagger-poc-container .swagger-ui .servers select {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+}
+
+/* Fix operation blocks */
+.swagger-poc-container .swagger-ui .opblock {
+  background: #1a1a1a !important;
+  border: 1px solid #333 !important;
+  margin-bottom: 15px !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.swagger-poc-container .swagger-ui .opblock .opblock-summary {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+  padding: 15px 20px !important;
+  border: none !important;
+}
+
+/* Fix method badges */
+.swagger-poc-container .swagger-ui .opblock .opblock-summary-method {
+  background: #61affe !important;
+  color: #ffffff !important;
+  font-weight: bold !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  margin-right: 15px !important;
+}
+
+.swagger-poc-container .swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background: #49cc90 !important;
+}
+
+.swagger-poc-container .swagger-ui .opblock.opblock-put .opblock-summary-method {
+  background: #fca130 !important;
+}
+
+.swagger-poc-container .swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background: #f93e3e !important;
+}
+
+/* Fix path and description */
+.swagger-poc-container .swagger-ui .opblock .opblock-summary-path {
+  color: #ffffff !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  font-size: 14px !important;
+}
+
+.swagger-poc-container .swagger-ui .opblock .opblock-summary-description {
+  color: #cccccc !important;
+  margin-top: 5px !important;
+}
+
+/* Fix expanded sections */
+.swagger-poc-container .swagger-ui .opblock .opblock-section-header {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+  padding: 15px 20px !important;
+  border-bottom: 1px solid #333 !important;
+}
+
+.swagger-poc-container .swagger-ui .opblock .opblock-section-request-body,
+.swagger-poc-container .swagger-ui .opblock .opblock-section-parameters,
+.swagger-poc-container .swagger-ui .opblock .opblock-section-responses {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  padding: 20px !important;
+}
+
+/* Fix input fields */
+.swagger-poc-container .swagger-ui input[type="text"],
+.swagger-poc-container .swagger-ui input[type="email"],
+.swagger-poc-container .swagger-ui input[type="password"],
+.swagger-poc-container .swagger-ui input[type="search"],
+.swagger-poc-container .swagger-ui input[type="tel"],
+.swagger-poc-container .swagger-ui input[type="url"],
+.swagger-poc-container .swagger-ui input[type="number"],
+.swagger-poc-container .swagger-ui textarea,
+.swagger-poc-container .swagger-ui select {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+}
+
+/* Fix buttons */
+.swagger-poc-container .swagger-ui .btn {
+  background: #cricbuzz-500 !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 8px 16px !important;
+  border-radius: 4px !important;
+  font-weight: 500 !important;
+}
+
+.swagger-poc-container .swagger-ui .btn:hover {
+  background: #cricbuzz-600 !important;
+}
+
+.swagger-poc-container .swagger-ui .btn.try-out__btn {
+  background: #49cc90 !important;
+}
+
+.swagger-poc-container .swagger-ui .btn.try-out__btn:hover {
+  background: #3cb371 !important;
+}
+
+/* Fix code blocks */
+.swagger-poc-container .swagger-ui .highlight-code {
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  border-radius: 4px !important;
+  padding: 15px !important;
+}
+
+/* Fix model section */
+.swagger-poc-container .swagger-ui .model-container {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  border-radius: 4px !important;
+  padding: 15px !important;
+}
+
+/* Fix tags */
+.swagger-poc-container .swagger-ui .opblock-tag {
+  color: #ffffff !important;
+  border-bottom: 1px solid #333 !important;
+  padding: 15px 20px !important;
+  background: #1a1a1a !important;
+}
+
+.swagger-poc-container .swagger-ui .opblock-tag .opblock-tag-section {
+  color: #cccccc !important;
+}
+
+/* Fix filter */
+.swagger-poc-container .swagger-ui .filter-container {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  padding: 15px 20px !important;
+  border-bottom: 1px solid #333 !important;
+}
+
+.swagger-poc-container .swagger-ui .filter-container input {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+}
+
+/* Fix scrollbar */
+.swagger-poc-container .swagger-ui::-webkit-scrollbar {
+  width: 8px;
+}
+
+.swagger-poc-container .swagger-ui::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.swagger-poc-container .swagger-ui::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.swagger-poc-container .swagger-ui::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Fix table styles */
+.swagger-poc-container .swagger-ui table {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.swagger-poc-container .swagger-ui table th {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  padding: 10px !important;
+}
+
+.swagger-poc-container .swagger-ui table td {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  padding: 10px !important;
+}
+
+/* Fix parameter tables */
+.swagger-poc-container .swagger-ui .parameters {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+.swagger-poc-container .swagger-ui .parameter__name {
+  color: #ffffff !important;
+  font-weight: bold !important;
+}
+
+.swagger-poc-container .swagger-ui .parameter__type {
+  color: #cccccc !important;
+}
+
+.swagger-poc-container .swagger-ui .parameter__deprecated {
+  color: #ff6b6b !important;
+}
+
+/* Fix response codes */
+.swagger-poc-container .swagger-ui .responses-inner h4,
+.swagger-poc-container .swagger-ui .responses-inner h5 {
+  color: #ffffff !important;
+}
+
+.swagger-poc-container .swagger-ui .response-col_status {
+  color: #ffffff !important;
+  font-weight: bold !important;
+}
+
+/* Fix try it out section */
+.swagger-poc-container .swagger-ui .opblock .opblock-section-request-body .opblock-section-header {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+}
+
+/* Fix JSON examples */
+.swagger-poc-container .swagger-ui .microlight {
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+  border-radius: 4px !important;
+  padding: 15px !important;
+}
+
+/* Fix loading states */
+.swagger-poc-container .swagger-ui .loading-container {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+/* Fix error states */
+.swagger-poc-container .swagger-ui .errors-wrapper {
+  background: #2a2a2a !important;
+  color: #ff6b6b !important;
+  border: 1px solid #ff6b6b !important;
+  border-radius: 4px !important;
+  padding: 15px !important;
+}
+
+/* Ensure proper z-index to avoid overlapping */
+.swagger-poc-container {
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+/* Fix any remaining overlapping issues */
+.swagger-poc-container .swagger-ui * {
+  box-sizing: border-box !important;
+}
+
+/* Fix performance metrics overlap */
+.performance-metrics {
+  z-index: 5 !important;
+}

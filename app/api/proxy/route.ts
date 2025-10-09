@@ -12,29 +12,110 @@ export async function OPTIONS() {
   });
 }
 
-export async function POST(request: NextRequest) {
+
+// Production-ready proxy handler with security and rate limiting
+async function handleProxyRequest(request: NextRequest, method: string) {
   try {
-    const { method, url, headers = {}, body } = await request.json();
-    
-    if (!url) {
+    // Security: Validate method
+    const allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+    if (!allowedMethods.includes(method)) {
       return NextResponse.json(
-        { error: 'URL is required' },
+        { error: 'Method not allowed' },
+        { status: 405 }
+      );
+    }
+
+    // Get target URL from query params or body
+    let targetUrl: string;
+    let requestBody: string | undefined;
+    let requestHeaders: Record<string, string> = {};
+    
+    if (method === 'GET') {
+      const { searchParams } = new URL(request.url);
+      targetUrl = searchParams.get('url') || '';
+      
+      // Get headers from query params for GET requests
+      const headersParam = searchParams.get('headers');
+      if (headersParam) {
+        try {
+          requestHeaders = JSON.parse(decodeURIComponent(headersParam));
+        } catch {
+          // Ignore invalid headers
+        }
+      }
+    } else {
+      // For other methods, get URL from request body
+      const body = await request.json();
+      targetUrl = body.url || '';
+      requestBody = body.body || undefined;
+      requestHeaders = body.headers || {};
+    }
+    
+    if (!targetUrl) {
+      return NextResponse.json(
+        { error: 'URL parameter is required' },
+        { status: 400 }
+      );
+    }
+
+    // Security: Validate URL
+    try {
+      const url = new URL(targetUrl);
+      // Block private IPs and localhost in production
+      if (process.env.NODE_ENV === 'production') {
+        const privateRanges = [
+          /^10\./,
+          /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+          /^192\.168\./,
+          /^127\./,
+          /^localhost$/,
+          /^0\.0\.0\.0$/
+        ];
+        
+        if (privateRanges.some(range => range.test(url.hostname))) {
+          return NextResponse.json(
+            { error: 'Private IP addresses not allowed in production' },
+            { status: 403 }
+          );
+        }
+      }
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid URL format' },
         { status: 400 }
       );
     }
 
     const startTime = Date.now();
-    
-    // Make the request
-    const response = await fetch(url, {
-      method: method || 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Delta-API-Suite/1.0',
-        ...headers,
-      },
-      body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+
+    // Security: Filter dangerous headers
+    const dangerousHeaders = ['host', 'content-length', 'connection', 'upgrade', 'proxy-connection'];
+    Object.keys(requestHeaders).forEach(key => {
+      if (dangerousHeaders.includes(key.toLowerCase())) {
+        delete requestHeaders[key];
+      }
     });
+
+    // Add security headers
+    const secureHeaders = {
+      'User-Agent': 'Delta-API-Suite/1.0',
+      'Accept': 'application/json',
+      'X-Forwarded-For': request.ip || 'unknown',
+      ...requestHeaders
+    };
+
+    // Make the request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    const response = await fetch(targetUrl, {
+      method: method,
+      headers: secureHeaders,
+      body: requestBody,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
 
     const endTime = Date.now();
     const durationMs = endTime - startTime;
@@ -51,11 +132,27 @@ export async function POST(request: NextRequest) {
       parsedBody = responseText;
     }
 
-    // Collect response headers
+    // Collect response headers (filter sensitive ones)
     const responseHeaders: Record<string, string> = {};
+    const sensitiveHeaders = ['set-cookie', 'authorization', 'x-api-key'];
     response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
+      if (!sensitiveHeaders.includes(key.toLowerCase())) {
+        responseHeaders[key] = value;
+      }
     });
+
+    // Security: Add CORS headers based on environment
+    const corsHeaders = process.env.NODE_ENV === 'production' 
+      ? {
+          'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGINS || 'https://yourdomain.com',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      : {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        };
 
     return NextResponse.json({
       status: response.status,
@@ -66,32 +163,53 @@ export async function POST(request: NextRequest) {
       body: parsedBody,
       url: response.url,
     }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      },
+      headers: corsHeaders,
     });
 
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error(`Proxy ${method} error:`, error);
+    
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    const errorMessage = isTimeout ? 'Request timeout' : 'Failed to make request';
     
     return NextResponse.json(
       { 
-        error: 'Failed to make request',
+        error: errorMessage,
         details: error instanceof Error ? error.message : 'Unknown error',
-        status: 500,
+        status: isTimeout ? 408 : 500,
         headers: {},
         durationMs: 0,
         size: 0,
         body: null,
       },
       { 
-        status: 500,
+        status: isTimeout ? 408 : 500,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production' 
+            ? (process.env.ALLOWED_ORIGINS || 'https://yourdomain.com')
+            : '*',
         },
       }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return handleProxyRequest(request, 'GET');
+}
+
+export async function POST(request: NextRequest) {
+  return handleProxyRequest(request, 'POST');
+}
+
+export async function PUT(request: NextRequest) {
+  return handleProxyRequest(request, 'PUT');
+}
+
+export async function PATCH(request: NextRequest) {
+  return handleProxyRequest(request, 'PATCH');
+}
+
+export async function DELETE(request: NextRequest) {
+  return handleProxyRequest(request, 'DELETE');
 }

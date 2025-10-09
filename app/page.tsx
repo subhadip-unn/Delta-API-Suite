@@ -1,51 +1,156 @@
 'use client';
 
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { AnimatedCard, AnimatedCardContent } from '@/components/ui/animated-card'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { DeltaLogo, CricbuzzLogo } from '@/components/delta-logo'
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { DeltaLogo, CricbuzzLogo } from '@/components/delta-logo';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import dynamic from 'next/dynamic';
 import { 
   Zap, 
   Globe, 
   FileText, 
-  ArrowRight, 
-  Code, 
   Play, 
-  Download,
-  Shield,
-  Sparkles
-} from 'lucide-react'
+  Loader2, 
+  CheckCircle, 
+  AlertCircle, 
+  ArrowRight, 
+  RefreshCw,
+  Code,
+  Settings,
+  BarChart3
+} from 'lucide-react';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.1
-    }
-  }
+// Dynamic imports to avoid SSR issues
+const JsonDiff = React.lazy(() => import('@/components/JsonDiff'));
+const APIJourney = React.lazy(() => import('@/components/modes/APIJourney'));
+const AdhocCompare = React.lazy(() => import('@/components/modes/AdhocCompare'));
+const PasteResponse = React.lazy(() => import('@/components/modes/PasteResponse'));
+const SwaggerPOC = React.lazy(() => import('@/components/SwaggerPOC'));
+const UniversalAPIBuilder = React.lazy(() => import('@/components/UniversalAPIBuilder'));
+
+// Response interface
+interface APIResponse {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  durationMs: number;
+  size: number;
+  body: any;
+  url: string;
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-      ease: "easeOut"
-    }
-  }
+// Main component state
+interface DeltaProState {
+  sourceResponse: APIResponse | null;
+  targetResponse: APIResponse | null;
+  loading: {
+    source: boolean;
+    target: boolean;
+  };
+  error: {
+    source: string | null;
+    target: string | null;
+  };
+  activeMode: 'api-explorer' | 'api-builder' | 'response-comparison' | 'swagger-poc' | 'universal-builder';
 }
 
-export default function HomePage() {
+export default function DeltaProPage() {
+  const [state, setState] = useState<DeltaProState>({
+    sourceResponse: null,
+    targetResponse: null,
+    loading: { source: false, target: false },
+    error: { source: null, target: null },
+    activeMode: 'api-explorer'
+  });
+
+  // Load saved state from localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('deltapro-state');
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        setState(prev => ({ ...prev, ...parsed }));
+      } catch (error) {
+        console.error('Failed to load saved state:', error);
+      }
+    }
+  }, []);
+
+  // Save state to localStorage
+  useEffect(() => {
+    localStorage.setItem('deltapro-state', JSON.stringify(state));
+  }, [state]);
+
+  // Handle API execution
+  const handleAPIExecute = async (side: 'source' | 'target', request: any) => {
+    setState(prev => ({
+      ...prev,
+      loading: { ...prev.loading, [side]: true },
+      error: { ...prev.error, [side]: null }
+    }));
+
+    try {
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      setState(prev => ({
+        ...prev,
+        [`${side}Response`]: data,
+        loading: { ...prev.loading, [side]: false }
+      }));
+
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: { 
+          ...prev.error, 
+          [side]: error instanceof Error ? error.message : 'Unknown error' 
+        },
+        loading: { ...prev.loading, [side]: false }
+      }));
+    }
+  };
+
+  // Handle response paste
+  const handleResponsePaste = (side: 'source' | 'target', response: APIResponse) => {
+    setState(prev => ({
+      ...prev,
+      [`${side}Response`]: response
+    }));
+  };
+
+  // Clear responses
+  const clearResponses = () => {
+    setState(prev => ({
+      ...prev,
+      sourceResponse: null,
+      targetResponse: null,
+      error: { source: null, target: null }
+    }));
+  };
+
   return (
     <div className="min-h-screen gradient-bg">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-sm">
+      <motion.header 
+        className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -53,214 +158,331 @@ export default function HomePage() {
               <div className="h-6 w-px bg-border" />
               <DeltaLogo size="xl" animated />
               <div className="flex flex-col">
-                <h1 className="text-xl font-bold gradient-text">Delta API Suite</h1>
-                <p className="text-xs text-muted-foreground">Professional API Testing</p>
+                <h1 className="text-2xl font-bold gradient-text">
+                  DeltaPro+
+                </h1>
+                <p className="text-xs text-muted-foreground">Professional API Testing Suite</p>
               </div>
             </div>
-            <ThemeToggle />
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Badge variant="secondary" className="text-xs">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Real-time
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  <Globe className="w-3 h-3 mr-1" />
+                  CORS-free
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  <BarChart3 className="w-3 h-3 mr-1" />
+                  Analytics
+                </Badge>
+              </div>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
-      <motion.main
-        className="container mx-auto px-6 py-16"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+      {/* Main Content */}
+      <motion.div 
+        className="container mx-auto px-6 py-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
       >
-        {/* Hero Section */}
-        <motion.div className="text-center mb-20" variants={itemVariants}>
-          <motion.div 
-            className="flex items-center justify-center space-x-4 mb-8"
-          >
-            <DeltaLogo size="xl" animated />
-            <div className="text-left">
-              <h1 className="text-6xl font-bold gradient-text mb-2">
-                Delta API Suite
-              </h1>
-              <p className="text-2xl text-muted-foreground font-medium">
-                Professional API Testing & Comparison
-              </p>
-            </div>
-          </motion.div>
-          
-          <motion.p 
-            className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8 leading-relaxed"
-            variants={itemVariants}
-          >
-            Advanced API testing and comparison tool with intelligent semantic analysis, 
-            order-insensitive matching, and world-class diff visualization. Built for 
-            <span className="text-cricbuzz-500 font-semibold"> Cricbuzz</span> by developers, for developers.
-          </motion.p>
-
-          <motion.div 
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            variants={itemVariants}
-          >
-            <Link href="/deltapro">
-              <Button size="lg" className="px-8 py-4 text-lg button-glow">
-                <Zap className="w-5 h-5 mr-2" />
-                Launch DeltaPro+
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-            <Button variant="outline" size="lg" className="px-8 py-4 text-lg">
-              <Download className="w-5 h-5 mr-2" />
-              View Documentation
-            </Button>
-          </motion.div>
-        </motion.div>
-
-        {/* Features Grid */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20"
-          variants={containerVariants}
+        {/* Mode Selector */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
         >
-          <AnimatedCard delay={0.1} glow>
-            <AnimatedCardContent
-              title="API Journey"
-              description="Explore and test APIs from your configuration with dynamic parameter control"
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-cricbuzz-100 dark:bg-cricbuzz-900 rounded-xl flex items-center justify-center mb-4">
-                  <Code className="w-6 h-6 text-cricbuzz-600 dark:text-cricbuzz-400" />
-                </div>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-cricbuzz-500 rounded-full" />
-                    <span>Browse comprehensive API catalog</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-cricbuzz-500 rounded-full" />
-                    <span>Dynamic parameter filling</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-cricbuzz-500 rounded-full" />
-                    <span>Platform & version switching</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-cricbuzz-500 rounded-full" />
-                    <span>Environment comparison</span>
-                  </li>
-                </ul>
-              </div>
-            </AnimatedCardContent>
-          </AnimatedCard>
-
-          <AnimatedCard delay={0.2} glow>
-            <AnimatedCardContent
-              title="Ad-hoc Compare"
-              description="Build custom requests with Postman-like interface and cURL import"
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-delta-100 dark:bg-delta-900 rounded-xl flex items-center justify-center mb-4">
-                  <Globe className="w-6 h-6 text-delta-600 dark:text-delta-400" />
-                </div>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-delta-500 rounded-full" />
-                    <span>Custom request builder</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-delta-500 rounded-full" />
-                    <span>cURL import support</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-delta-500 rounded-full" />
-                    <span>Headers & body editing</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-delta-500 rounded-full" />
-                    <span>Method selection</span>
-                  </li>
-                </ul>
-              </div>
-            </AnimatedCardContent>
-          </AnimatedCard>
-
-          <AnimatedCard delay={0.3} glow>
-            <AnimatedCardContent
-              title="Paste Response"
-              description="Compare responses directly by pasting JSON data without network calls"
-            >
-              <div className="space-y-4">
-                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-xl flex items-center justify-center mb-4">
-                  <FileText className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    <span>Direct JSON pasting</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    <span>Instant validation</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    <span>Offline comparison</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    <span>Export capabilities</span>
-                  </li>
-                </ul>
-              </div>
-            </AnimatedCardContent>
-          </AnimatedCard>
-        </motion.div>
-
-        {/* Features Section */}
-        <motion.div 
-          className="text-center mb-20"
-          variants={itemVariants}
-        >
-          <h2 className="text-4xl font-bold gradient-text mb-8">
-            Why Choose Delta API Suite?
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: Shield, title: "Secure", desc: "CORS-free proxy with enterprise security" },
-              { icon: Sparkles, title: "Intelligent", desc: "AI-powered semantic comparison" },
-              { icon: Play, title: "Fast", desc: "Real-time testing and instant results" },
-              { icon: Code, title: "Developer-First", desc: "Built by developers, for developers" }
-            ].map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                className="text-center p-6 rounded-xl bg-card/50 backdrop-blur-sm border"
-                whileHover={{ scale: 1.05 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: 0.4 + index * 0.1 }}
+          <Card className="mb-6 card-hover">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="w-5 h-5 text-cricbuzz-500" />
+                <span>API Testing Modes</span>
+                <Badge variant="outline" className="ml-auto">
+                  <Code className="w-3 h-3 mr-1" />
+                  Professional
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs 
+                value={state.activeMode} 
+                onValueChange={(value) => setState(prev => ({ 
+                  ...prev, 
+                  activeMode: value as any 
+                }))}
+                className="w-full"
               >
-                <feature.icon className="w-8 h-8 mx-auto mb-4 text-cricbuzz-500" />
-                <h3 className="font-semibold mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground">{feature.desc}</p>
-              </motion.div>
-            ))}
-          </div>
+                <TabsList className="grid w-full grid-cols-5 bg-muted/50">
+                  <TabsTrigger 
+                    value="api-explorer" 
+                    className="flex items-center space-x-2 data-[state=active]:bg-cricbuzz-500 data-[state=active]:text-white"
+                  >
+                    <Code className="w-4 h-4" />
+                    <span>API Explorer</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="api-builder" 
+                    className="flex items-center space-x-2 data-[state=active]:bg-delta-500 data-[state=active]:text-white"
+                  >
+                    <Globe className="w-4 h-4" />
+                    <span>API Builder</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="response-comparison" 
+                    className="flex items-center space-x-2 data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Response Comparison</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="swagger-poc" 
+                    className="flex items-center space-x-2 data-[state=active]:bg-green-500 data-[state=active]:text-white"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Swagger</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="universal-builder" 
+                    className="flex items-center space-x-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>Universal</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="api-explorer" className="mt-6">
+                  <React.Suspense fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingSpinner size="lg" text="Loading API Explorer..." />
+                    </div>
+                  }>
+                    <APIJourney
+                      onAPIExecute={handleAPIExecute}
+                      sourceResponse={state.sourceResponse}
+                      targetResponse={state.targetResponse}
+                      loading={state.loading}
+                      error={state.error}
+                    />
+                  </React.Suspense>
+                </TabsContent>
+
+                <TabsContent value="api-builder" className="mt-6">
+                  <React.Suspense fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingSpinner size="lg" text="Loading API Builder..." />
+                    </div>
+                  }>
+                    <AdhocCompare
+                      onAPIExecute={handleAPIExecute}
+                      sourceResponse={state.sourceResponse}
+                      targetResponse={state.targetResponse}
+                      loading={state.loading}
+                      error={state.error}
+                    />
+                  </React.Suspense>
+                </TabsContent>
+
+                <TabsContent value="response-comparison" className="mt-6">
+                  <React.Suspense fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingSpinner size="lg" text="Loading Response Comparison..." />
+                    </div>
+                  }>
+                    <PasteResponse
+                      onResponsePaste={handleResponsePaste}
+                      sourceResponse={state.sourceResponse}
+                      targetResponse={state.targetResponse}
+                    />
+                  </React.Suspense>
+                </TabsContent>
+
+                <TabsContent value="swagger-poc" className="mt-6">
+                  <React.Suspense fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingSpinner size="lg" text="Loading Swagger POC..." />
+                    </div>
+                  }>
+                    <SwaggerPOC />
+                  </React.Suspense>
+                </TabsContent>
+
+                <TabsContent value="universal-builder" className="mt-6">
+                  <React.Suspense fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingSpinner size="lg" text="Loading Universal API Builder..." />
+                    </div>
+                  }>
+                    <UniversalAPIBuilder />
+                  </React.Suspense>
+                </TabsContent>
+
+              </Tabs>
+            </CardContent>
+          </Card>
         </motion.div>
 
-        {/* CTA Section */}
-        <motion.div 
-          className="text-center bg-gradient-to-r from-cricbuzz-500/10 to-delta-500/10 rounded-2xl p-12 border border-cricbuzz-200/20 dark:border-cricbuzz-800/20"
-          variants={itemVariants}
-        >
-          <h2 className="text-3xl font-bold mb-4">
-            Ready to revolutionize your API testing?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of developers who trust Delta API Suite for their API testing needs.
-          </p>
-          <Link href="/deltapro">
-            <Button size="lg" className="px-12 py-4 text-lg button-glow">
-              <Zap className="w-5 h-5 mr-2" />
-              Get Started Now
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </Link>
-        </motion.div>
-      </motion.main>
+        {/* Response Comparison */}
+        <AnimatePresence>
+          {(state.sourceResponse || state.targetResponse) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card className="mb-6 card-hover">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center space-x-2">
+                      <BarChart3 className="w-5 h-5 text-cricbuzz-500" />
+                      <span>Response Comparison</span>
+                      <Badge variant="outline" className="ml-2">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Live Analysis
+                      </Badge>
+                    </CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <Badge 
+                        variant={state.sourceResponse ? "default" : "secondary"} 
+                        className="text-xs"
+                      >
+                        {state.sourceResponse ? 'Source: Ready' : 'Source: Empty'}
+                      </Badge>
+                      <Badge 
+                        variant={state.targetResponse ? "default" : "secondary"} 
+                        className="text-xs"
+                      >
+                        {state.targetResponse ? 'Target: Ready' : 'Target: Empty'}
+                      </Badge>
+                      <button
+                        onClick={clearResponses}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1 inline" />
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <React.Suspense fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingSpinner size="lg" text="Analyzing responses..." />
+                    </div>
+                  }>
+                    <JsonDiff
+                      source={state.sourceResponse}
+                      target={state.targetResponse}
+                    />
+                  </React.Suspense>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Status Summary */}
+        <AnimatePresence>
+          {(state.sourceResponse || state.targetResponse) && (
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              {state.sourceResponse && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.2 }}
+                >
+                  <Card className="card-hover border-cricbuzz-200 dark:border-cricbuzz-800">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-cricbuzz-500 rounded-full animate-pulse"></div>
+                        <span>Source Response</span>
+                        <Badge variant="outline" className="ml-auto text-xs">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Ready
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status:</span>
+                          <span className="font-mono">{state.sourceResponse.status} {state.sourceResponse.statusText}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Duration:</span>
+                          <span className="font-mono text-cricbuzz-500">{state.sourceResponse.durationMs}ms</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Size:</span>
+                          <span className="font-mono">{state.sourceResponse.size} bytes</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">URL:</span>
+                          <span className="font-mono text-xs truncate max-w-32">{state.sourceResponse.url}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {state.targetResponse && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                >
+                  <Card className="card-hover border-delta-200 dark:border-delta-800">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-delta-500 rounded-full animate-pulse"></div>
+                        <span>Target Response</span>
+                        <Badge variant="outline" className="ml-auto text-xs">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Ready
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status:</span>
+                          <span className="font-mono">{state.targetResponse.status} {state.targetResponse.statusText}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Duration:</span>
+                          <span className="font-mono text-delta-500">{state.targetResponse.durationMs}ms</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Size:</span>
+                          <span className="font-mono">{state.targetResponse.size} bytes</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">URL:</span>
+                          <span className="font-mono text-xs truncate max-w-32">{state.targetResponse.url}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
-  )
+  );
 }

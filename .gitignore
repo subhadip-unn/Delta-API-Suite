@@ -19,6 +19,11 @@ dist-ssr
 build
 out
 
+# Next.js
+.next/
+.vercel
+tsconfig.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
