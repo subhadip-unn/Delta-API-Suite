@@ -25,7 +25,6 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^1.1.1",
-    "curl-to-fetch": "^1.2.1",
     "framer-motion": "^10.16.16",
     "lucide-react": "^0.294.0",
     "monaco-editor": "^0.45.0",
@@ -33,7 +32,6 @@
     "next-themes": "^0.4.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "swagger-ui-react": "^5.29.0",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7"
   },
@@ -41,7 +39,6 @@
     "@types/node": "^20.9.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
-    "@types/swagger-ui-react": "^5.18.0",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.53.0",
     "eslint-config-next": "14.0.4",
