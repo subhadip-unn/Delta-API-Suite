@@ -10,7 +10,6 @@ import { DeltaLogo, CricbuzzLogo } from '@/components/delta-logo';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import dynamic from 'next/dynamic';
 import { 
-  Zap, 
   Globe, 
   FileText, 
   Play, 
@@ -29,8 +28,7 @@ const JsonDiff = React.lazy(() => import('@/components/JsonDiff'));
 const APIJourney = React.lazy(() => import('@/components/modes/APIJourney'));
 const AdhocCompare = React.lazy(() => import('@/components/modes/AdhocCompare'));
 const PasteResponse = React.lazy(() => import('@/components/modes/PasteResponse'));
-const SwaggerPOC = React.lazy(() => import('@/components/SwaggerPOC'));
-const UniversalAPIBuilder = React.lazy(() => import('@/components/UniversalAPIBuilder'));
+// Removed Swagger and Universal modules
 
 // Response interface
 interface APIResponse {
@@ -55,7 +53,7 @@ interface DeltaProState {
     source: string | null;
     target: string | null;
   };
-  activeMode: 'api-explorer' | 'api-builder' | 'response-comparison' | 'swagger-poc' | 'universal-builder';
+  activeMode: 'api-explorer' | 'api-builder' | 'response-comparison';
 }
 
 export default function DeltaProPage() {
@@ -219,7 +217,7 @@ export default function DeltaProPage() {
                 }))}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-5 bg-muted/50">
+                <TabsList className="grid w-full grid-cols-3 bg-muted/50">
                   <TabsTrigger 
                     value="api-explorer" 
                     className="flex items-center space-x-2 data-[state=active]:bg-cricbuzz-500 data-[state=active]:text-white"
@@ -241,20 +239,7 @@ export default function DeltaProPage() {
                     <FileText className="w-4 h-4" />
                     <span>Response Comparison</span>
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="swagger-poc" 
-                    className="flex items-center space-x-2 data-[state=active]:bg-green-500 data-[state=active]:text-white"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>Swagger</span>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="universal-builder" 
-                    className="flex items-center space-x-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white"
-                  >
-                    <Zap className="w-4 h-4" />
-                    <span>Universal</span>
-                  </TabsTrigger>
+                  
                 </TabsList>
 
                 <TabsContent value="api-explorer" className="mt-6">
@@ -303,25 +288,7 @@ export default function DeltaProPage() {
                   </React.Suspense>
                 </TabsContent>
 
-                <TabsContent value="swagger-poc" className="mt-6">
-                  <React.Suspense fallback={
-                    <div className="flex items-center justify-center py-12">
-                      <LoadingSpinner size="lg" text="Loading Swagger POC..." />
-                    </div>
-                  }>
-                    <SwaggerPOC />
-                  </React.Suspense>
-                </TabsContent>
-
-                <TabsContent value="universal-builder" className="mt-6">
-                  <React.Suspense fallback={
-                    <div className="flex items-center justify-center py-12">
-                      <LoadingSpinner size="lg" text="Loading Universal API Builder..." />
-                    </div>
-                  }>
-                    <UniversalAPIBuilder />
-                  </React.Suspense>
-                </TabsContent>
+                
 
               </Tabs>
             </CardContent>
